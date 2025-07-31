@@ -263,7 +263,7 @@ const GeneratedQRPage: React.FC = () => {
                   }}>Manage</th>
                 </tr>
               </thead>
-              <tbody>
+              {/* <tbody>
                 {filteredQRCodes.map((qr, idx) => {
                   const origIdx = qrCodes.findIndex(q => q.qrId === qr.qrId);
                   const qrTransactions = transactions.filter(txn => txn.qrId === qr.qrId);
@@ -322,6 +322,245 @@ const GeneratedQRPage: React.FC = () => {
                     </tr>
                   );
                 })}
+              </tbody> */}
+              <tbody>
+                {filteredQRCodes.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      style={{
+                        padding: '24px',
+                        textAlign: 'center',
+                        fontStyle: 'italic',
+                        color: '#6b7280',
+                        fontWeight: 500,
+                      }}
+                    >
+                      No Records Found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredQRCodes.map((qr, idx) => {
+                    const origIdx = qrCodes.findIndex(q => q.qrId === qr.qrId);
+                    const qrTransactions = transactions.filter(txn => txn.qrId === qr.qrId);
+                    return (
+                      <tr
+                        key={qr.qrId}
+                        style={{
+                          background: idx % 2 === 0 ? '#f9fafb' : '#fff',
+                          borderBottom: '1.5px solid #e5e7eb',
+                          transition: 'background 0.2s',
+                          boxShadow: '0 1px 4px rgba(102,126,234,0.04)',
+                          cursor: 'pointer',
+                        }}
+                        onMouseOver={e => (e.currentTarget.style.background = '#eef2ff')}
+                        onMouseOut={e =>
+                        (e.currentTarget.style.background =
+                          idx % 2 === 0 ? '#f9fafb' : '#fff')
+                        }
+                      >
+                        <td
+                          style={{
+                            padding: '12px',
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          {qr.status === 'Inactive' ? (
+                            'Inactive'
+                          ) : (
+                            <div
+                              style={{
+                                padding: '8px',
+                                background: '#f5f7fa',
+                                borderRadius: '10px',
+                                display: 'inline-block',
+                              }}
+                            >
+                              <QRCode value={JSON.stringify(qr)} size={50} />
+                            </div>
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            fontWeight: 600,
+                            color: '#4f46e5',
+                          }}
+                        >
+                          {qr.qrId}
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {qr.referenceName}
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            fontFamily: 'monospace',
+                            color: '#374151',
+                          }}
+                        >
+                          {qr.vpa}
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            color: '#6366f1',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {qr.category}
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                            color: '#059669',
+                            fontWeight: 600,
+                          }}
+                        >
+                          ₹{qr.maxAmount}
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          <button
+                            onClick={() => handleToggleStatus(origIdx)}
+                            style={{
+                              background:
+                                qr.status === 'Active'
+                                  ? 'linear-gradient(90deg,#4caf50,#43e97b)'
+                                  : 'linear-gradient(90deg,#f44336,#f093fb)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '6px 16px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              boxShadow: '0 1px 4px rgba(76,175,80,0.08)',
+                            }}
+                          >
+                            {qr.status}
+                          </button>
+                        </td>
+                        <td
+                          style={{
+                            borderRight: '2px solid #e5e7eb',
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          <button
+                            style={{
+                              marginRight: 6,
+                              background: '#6366f1',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '6px 12px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => {
+                              setEditIdx(origIdx);
+                              setEditInitialData(qrCodes[origIdx]);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            style={{
+                              marginRight: 6,
+                              background: '#00bcd4',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '6px 12px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => setShowCardIdx(origIdx)}
+                          >
+                            Download
+                          </button>
+                          <button
+                            style={{
+                              marginRight: 6,
+                              background: '#f59e42',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '6px 12px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => handleViewQrTransactions(qr.qrId)}
+                          >
+                            View ({qrTransactions.length})
+                          </button>
+                          <button
+                            style={{
+                              background: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '6px 12px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                            }}
+                            onClick={() => handleDeleteQR(origIdx)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                        <td
+                          style={{
+                            textAlign: 'center',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          <button
+                            onClick={() => toggleQrSimulation(origIdx)}
+                            disabled={qr.status === 'Inactive'}
+                            style={{
+                              background: qr.simulationActive
+                                ? 'linear-gradient(90deg,#f093fb,#f5576c)'
+                                : 'linear-gradient(90deg,#43e97b,#38f9d7)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '6px 16px',
+                              fontWeight: 600,
+                              cursor: qr.status === 'Inactive' ? 'not-allowed' : 'pointer',
+                              opacity: qr.status === 'Inactive' ? 0.5 : 1,
+                            }}
+                          >
+                            {qr.simulationActive ? 'Stop' : 'Start'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
