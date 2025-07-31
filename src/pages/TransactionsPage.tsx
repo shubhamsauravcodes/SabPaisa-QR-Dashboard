@@ -31,11 +31,11 @@ const TransactionsPage = () => {
       const numTransactions = Math.floor(Math.random() * 4) + 2;
       const newTransactions = [];
       
-      for (let i = 0; i < numTransactions; i++) {
-        // If viewing specific QR, generate transactions for that QR
-        const targetQrId = qrId || 'DEMO123';
-        const newTransaction = simulatePayment(targetQrId, '10000');
-        newTransactions.push(newTransaction);
+      if (qrId) {
+        for (let i = 0; i < numTransactions; i++) {
+          const newTransaction = simulatePayment(qrId, '10000');
+          newTransactions.push(newTransaction);
+        }
       }
       
       dispatch(addTransactions(newTransactions));
