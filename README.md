@@ -1,43 +1,48 @@
-# SabPaisa-QR-Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# SabPaisa QR Dashboard
 
-Currently, two official plugins are available:
+SabPaisa QR Dashboard is a modern web application for managing and monitoring UPI QR codes and payment transactions. Built with React and Vite, it provides a seamless interface for generating QR codes, tracking transaction activity, and simulating payment flows for testing and demonstration purposes.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- Generate and manage multiple UPI QR codes with custom identifiers and categories
+- View, filter, and search all generated QR codes
+- Monitor real-time and historical payment transactions
+- Simulate payment activity for demo or testing
+- Dashboard with key stats, recent activity, and quick actions
+- Responsive, user-friendly UI
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 18 + TypeScript
+- Vite for fast development and build
+- Redux Toolkit for state management
+- Modern CSS for styling
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+2. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+3. **Open your browser:**
+   Visit [http://localhost:5173](http://localhost:5173) to use the dashboard.
+
+## Project Structure
+
+- `src/components/` – UI components (Dashboard, QR modals, etc.)
+- `src/pages/` – Main application pages
+- `src/store/` – Redux slices and hooks
+- `src/types/` – TypeScript types
+- `src/utils/` – Utility functions
+
+## License
+
+This project is for demonstration and internal use. All rights reserved.
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
