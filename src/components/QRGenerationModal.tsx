@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useAppSelector } from '../store/hooks';
+import type { QRCode } from '../types/index';
 import Modal from "./Modal";
 
 const categories = ["Retail", "Rental", "Education", "Custom"];
@@ -18,8 +20,8 @@ function generateQRId() {
 interface QRGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
-  initialData?: any;
+  onSubmit: (data: QRCode) => void;
+  initialData?: Partial<QRCode>;
   isEdit?: boolean;
 }
 
@@ -31,6 +33,8 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
   isEdit = false,
 }) => {
   const [qrId, setQrId] = useState("");
+  // Get all QR codes from redux
+  const qrCodes = useAppSelector((state) => state.qrCodes.qrCodes) as QRCode[];
   const [referenceName, setReferenceName] = useState("");
   const [description, setDescription] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
@@ -60,44 +64,63 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
     }
   }, [isOpen, initialData]);
 
+  // Generate a QR ID that is not already used
   const handleGenerateId = () => {
-    setQrId(generateQRId());
-  };
+    let newId = "";
+    let attempts = 0;
+    do {
+      newId = generateQRId();
+      attempts++;
+      // Prevent infinite loop
+      if (attempts > 100) break;
+    } while (qrCodes.some((qr: QRCode) => qr.qrId === newId));
+    setQrId(newId);
+  } 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clear any previous errors
     setError("");
-    
+
     // Strict validation for QR Identifier format
     if (!qrId || qrId.length !== 5) {
       setError("QR Identifier must be exactly 5 characters long");
       return;
     }
-    
     const qrIdRegex = /^[A-Z0-9]{5}$/;
     if (!qrIdRegex.test(qrId)) {
       setError("QR Identifier must contain only uppercase letters (A-Z) and numbers (0-9)");
       return;
     }
-    
     // Ensure it contains at least one letter and one number
     const hasLetter = /[A-Z]/.test(qrId);
     const hasNumber = /[0-9]/.test(qrId);
-    
     if (!hasLetter || !hasNumber) {
       setError("QR Identifier must contain at least one letter (A-Z) and one number (0-9)");
       return;
     }
-    
     if (!referenceName.trim()) {
       setError("Reference Name is required");
       return;
     }
 
-    const vpa = `sabpaisa.${qrId}@okhdfcbank`;
+    // Check for duplicate QR Identifier (exclude current QR in edit mode)
+    if (qrCodes.some((qr: QRCode) => qr.qrId === qrId && (!isEdit || qr.qrId !== initialData?.qrId))) {
+      setError("This QR Identifier is already used. Please generate a new one.");
+      return;
+    }
 
+    // Check for same referenceName and category with same QR Identifier
+    if (qrCodes.some((qr: QRCode) => qr.referenceName.trim().toLowerCase() === referenceName.trim().toLowerCase() && qr.category === category && qr.qrId === qrId)) {
+      setError("Same QR Identifier cannot be used for same Reference Name and Category.");
+      return;
+    }
+
+    // Check for same referenceName and category with different QR Identifier
+    if (qrCodes.some((qr: QRCode) => qr.referenceName.trim().toLowerCase() === referenceName.trim().toLowerCase() && qr.category === category && qr.qrId !== qrId)) {
+      // This is allowed, but ensure QR Identifier is unique (already checked above)
+    }
+
+    const vpa = `sabpaisa.${qrId}@okhdfcbank`;
     onSubmit({
       qrId,
       vpa,
@@ -106,8 +129,10 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
       maxAmount: maxAmount.trim(),
       category,
       notes: notes.trim(),
+      status: 'Active',
+      createdAt: new Date(),
+      simulationActive: false,
     });
-
     onClose();
   };
 
@@ -117,35 +142,69 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose}>
       <div style={{
         background: 'white',
-        borderRadius: '12px',
+        borderRadius: '16px',
         padding: '32px',
         minWidth: '691px',
         maxHeight: '90vh',
-        overflow: 'auto'
+        overflow: 'auto',
+        boxShadow: '0 8px 32px rgba(102,126,234,0.12)',
+        position: 'relative'
       }}>
-        {/* Header */}
+        {/* Header with close button on right */}
         <div style={{
-          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           marginBottom: '32px',
           borderBottom: '2px solid #f0f0f0',
-          paddingBottom: '20px'
+          paddingBottom: '20px',
+          position: 'relative'
         }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '28px',
-            fontWeight: '600',
-            color: '#333',
-            marginBottom: '8px'
-          }}>
-            {isEdit ? "Edit QR Code" : "Generate QR Code"}
-          </h2>
-          <p style={{
-            margin: 0,
-            color: '#666',
-            fontSize: '16px'
-          }}>
-            {isEdit ? "Update your QR code details" : "Create a new QR code for payments"}
-          </p>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <h2 style={{
+              margin: 0,
+              fontSize: '32px',
+              fontWeight: '700',
+              color: 'linear-gradient(90deg,#667eea,#764ba2)',
+              background: 'linear-gradient(90deg,#667eea,#764ba2)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '0.04em',
+              marginBottom: '8px',
+              textShadow: '0 2px 8px rgba(102,126,234,0.12)'
+            }}>
+              {isEdit ? "Edit QR Code" : "Generate SabPaisa QR Code"}
+            </h2>
+            <p style={{
+              margin: 0,
+              color: '#666',
+              fontSize: '17px',
+              fontWeight: 500,
+              letterSpacing: '0.01em'
+            }}>
+              {isEdit ? "Update your QR code details" : "Create a new QR code for payments"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              background: 'none',
+              border: 'none',
+              fontSize: '2rem',
+              color: '#6366f1',
+              cursor: 'pointer',
+              zIndex: 10,
+              padding: 0,
+              lineHeight: 1
+            }}
+          >
+            &times;
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>

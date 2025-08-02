@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { simulatePayment } from '../utils/paymentSimulator';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addQRCode, updateQRCode, deleteQRCode, toggleQRStatus, toggleSimulation } from '../store/slices/qrCodesSlice';
@@ -25,6 +26,21 @@ const GeneratedQRPage: React.FC = () => {
   const [editInitialData, setEditInitialData] = useState<any>({});
   const [showCardIdx, setShowCardIdx] = useState<number | null>(null);
 
+  // Simulate UPI transactions every second for QR codes with simulationActive=true
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      qrCodes.forEach(qr => {
+        if (qr.simulationActive && qr.status === 'Active') {
+          const txn = simulatePayment(qr.qrId, qr.maxAmount);
+          dispatch({
+            type: 'transactions/addTransaction',
+            payload: txn
+          });
+        }
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [qrCodes, dispatch]);
 
 
   const categories = [
@@ -66,7 +82,7 @@ const GeneratedQRPage: React.FC = () => {
           ...qrCodes[editIdx],
           referenceName: data.referenceName,
           description: data.description || '',
-          maxAmount: data.maxAmount || '1000',
+          maxAmount: data.maxAmount || '',
           category: data.category || 'Other',
           notes: data.notes || ''
         }
