@@ -3,11 +3,12 @@ export interface QRCode {
   vpa: string;
   referenceName: string;
   description?: string;
-  maxAmount?: string;
-  category: string;
+  maxAmount?: number; // Changed from string to number to match backend
+  category: 'Retail' | 'Rental' | 'Education' | 'Custom';
   notes?: string;
-  status: string;
+  status: 'Active' | 'Inactive';
   createdAt: Date;
+  updatedAt?: Date; // Added updatedAt from backend
   simulationActive: boolean;
 }
 

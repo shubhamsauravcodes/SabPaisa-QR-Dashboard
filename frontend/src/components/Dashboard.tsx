@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { 
-  addQRCode, 
-  updateQRCode, 
-  deleteQRCode, 
-  toggleQRStatus, 
-  toggleSimulation 
+  fetchQRCodes,
+  createNewQRCode,
+  updateQRCodeDetails,
+  deleteQRCodeById
 } from '../store/slices/qrCodesSlice';
+import { fetchTransactions } from '../store/slices/transactionsSlice';
 import QRGenerationModal from "./QRGenerationModal";
 import QRCodeCard from "./QRCodeCard";
 import Modal from "./Modal";
@@ -32,14 +32,20 @@ function Dashboard() {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  const handleCreateQR = (data) => {
-    const newQRCode = {
-      ...data,
-      status: "Active",
-      simulationActive: false,
-      createdAt: new Date()
-    };
-    dispatch(addQRCode(newQRCode));
+  // Load data on component mount
+  useEffect(() => {
+    dispatch(fetchQRCodes());
+    dispatch(fetchTransactions());
+  }, [dispatch]);
+
+  const handleCreateQR = async (data) => {
+    try {
+      await dispatch(createNewQRCode(data)).unwrap();
+      setModalOpen(false);
+    } catch (error) {
+      console.error('Failed to create QR code:', error);
+      // You can add error handling UI here
+    }
   };
 
   const handleEditQR = (data) => {

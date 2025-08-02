@@ -20,7 +20,7 @@ function generateQRId() {
 interface QRGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: QRCode) => void;
+  onSubmit: (data: Omit<QRCode, 'createdAt' | 'simulationActive' | 'status'>) => void;
   initialData?: Partial<QRCode>;
   isEdit?: boolean;
 }
@@ -37,8 +37,8 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
   const qrCodes = useAppSelector((state) => state.qrCodes.qrCodes) as QRCode[];
   const [referenceName, setReferenceName] = useState("");
   const [description, setDescription] = useState("");
-  const [maxAmount, setMaxAmount] = useState("");
-  const [category, setCategory] = useState("Retail");
+  const [maxAmount, setMaxAmount] = useState<number | undefined>(undefined);
+  const [category, setCategory] = useState<'Retail' | 'Rental' | 'Education' | 'Custom'>("Retail");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
 
@@ -48,7 +48,7 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
         setQrId(initialData.qrId || generateQRId());
         setReferenceName(initialData.referenceName || "");
         setDescription(initialData.description || "");
-        setMaxAmount(initialData.maxAmount || "");
+        setMaxAmount(initialData.maxAmount || undefined);
         setCategory(initialData.category || "Retail");
         setNotes(initialData.notes || "");
         setError("");
@@ -56,7 +56,7 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
         setQrId(generateQRId());
         setReferenceName("");
         setDescription("");
-        setMaxAmount("");
+        setMaxAmount(undefined);
         setCategory("Retail");
         setNotes("");
         setError("");
@@ -126,12 +126,9 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
       vpa,
       referenceName: referenceName.trim(),
       description: description.trim(),
-      maxAmount: maxAmount.trim(),
+      maxAmount,
       category,
       notes: notes.trim(),
-      status: 'Active',
-      createdAt: new Date(),
-      simulationActive: false,
     });
     onClose();
   };
@@ -414,10 +411,22 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="text"
-                  value={maxAmount}
-                  onChange={(e) => setMaxAmount(e.target.value)}
+                  type="number"
+                  value={maxAmount ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setMaxAmount(undefined);
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue > 0) {
+                        setMaxAmount(numValue);
+                      }
+                    }
+                  }}
                   placeholder="Enter maximum amount (optional)"
+                  min="0"
+                  step="0.01"
                   style={{
                     width: '92%',
                     padding: '12px 16px',

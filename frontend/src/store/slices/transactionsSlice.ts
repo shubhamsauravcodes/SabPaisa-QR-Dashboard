@@ -1,6 +1,7 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { Transaction } from '../../types/index';
+import { transactionApi } from '../../services/api';
 
 interface TransactionsState {
   transactions: Transaction[];
@@ -13,6 +14,25 @@ const initialState: TransactionsState = {
   loading: false,
   error: null,
 };
+
+// Thunks for async operations
+export const fetchTransactions = createAsyncThunk('transactions/fetchTransactions', async (params?: { qrId?: string; status?: string; limit?: number }, { rejectWithValue }) => {
+  try {
+    const response = await transactionApi.getAll(params);
+    return response.data.transactions;
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const simulateTransactions = createAsyncThunk('transactions/simulate', async ({ qrId, count }: { qrId: string; count?: number }, { rejectWithValue }) => {
+  try {
+    const response = await transactionApi.simulate(qrId, count);
+    return response.data;
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
+});
 
 const transactionsSlice = createSlice({
   name: 'transactions',
@@ -73,6 +93,35 @@ const transactionsSlice = createSlice({
     bulkAddTransactions: (state, action: PayloadAction<Transaction[]>) => {
       state.transactions.unshift(...action.payload);
     },
+  },
+  extraReducers: (builder) => {
+    // Fetch transactions
+    builder.addCase(fetchTransactions.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchTransactions.fulfilled, (state, action) => {
+      state.loading = false;
+      state.transactions = action.payload;
+    });
+    builder.addCase(fetchTransactions.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
+    // Simulate transactions
+    builder.addCase(simulateTransactions.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(simulateTransactions.fulfilled, (state, action) => {
+      state.loading = false;
+      state.transactions.unshift(...action.payload);
+    });
+    builder.addCase(simulateTransactions.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
   },
 });
 
