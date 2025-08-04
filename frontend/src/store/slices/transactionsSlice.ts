@@ -31,12 +31,11 @@ const initialState: TransactionsState = {
 };
 
 // Thunks for async operations
-export const fetchTransactions = createAsyncThunk('transactions/fetchTransactions', async (params?: { qrId?: string; status?: string; limit?: number }, { rejectWithValue }) => {
+export const fetchTransactions = createAsyncThunk('transactions/fetchTransactions', async (params?: { qrId?: string; status?: string; limit?: number; page?: number }, { rejectWithValue }) => {
   try {
     const response = await transactionApi.getAll(params);
-    // Ensure we always return an array
-    const transactions = response.data?.transactions || response.data || [];
-    return Array.isArray(transactions) ? transactions : [];
+    // Return the full response including pagination info
+    return response;
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -132,8 +131,9 @@ const transactionsSlice = createSlice({
     });
     builder.addCase(fetchTransactions.fulfilled, (state, action) => {
       state.loading = false;
-      // Ensure payload is always an array
-      state.transactions = Array.isArray(action.payload) ? action.payload : [];
+      // Extract transactions from the response
+      const transactions = action.payload?.data?.transactions || [];
+      state.transactions = Array.isArray(transactions) ? transactions : [];
     });
     builder.addCase(fetchTransactions.rejected, (state, action) => {
       state.loading = false;

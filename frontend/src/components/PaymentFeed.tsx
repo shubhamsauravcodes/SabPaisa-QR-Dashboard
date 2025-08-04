@@ -214,10 +214,12 @@ const PaymentFeed = ({ transactions: rawTransactions }) => {
           </button>
         </div>
         
-        {/* Results count */}
-        <div style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
-          Showing {filteredTransactions.length} of {transactions.length} transactions
-        </div>
+        {/* Filter results count - only show when filters are active */}
+        {(filterQrId || filterStatus || filterAmountRange || filterUtr || filterCustomerInfo || filterDateFrom || filterDateTo) && (
+          <div style={{ fontSize: '14px', color: '#666', marginBottom: '16px', fontStyle: 'italic' }}>
+            📋 Filtered: Showing {filteredTransactions.length} of {transactions.length} transactions on this page
+          </div>
+        )}
       </div>
 
       {/* Scrollable Transactions Table */}

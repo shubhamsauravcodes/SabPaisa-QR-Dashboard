@@ -1,13 +1,19 @@
 const Transaction = require('../models/Transaction');
 const QRCode = require('../models/QRCode');
 const { v4: uuidv4 } = require('uuid');
+const { getPaginationMeta } = require('../utils/helpers');
 
 // @desc    Get all transactions
 // @route   GET /api/transactions
 // @access  Public
 const getAllTransactions = async (req, res, next) => {
   try {
-    const { qrId, status, startDate, endDate, search } = req.query;
+    const { qrId, status, startDate, endDate, search, page = 1, limit = 20 } = req.query;
+
+    // Parse pagination parameters
+    const pageNumber = parseInt(page, 10) || 1;
+    const pageSize = Math.min(parseInt(limit, 10) || 20, 100); // Max 100 items per page
+    const skip = (pageNumber - 1) * pageSize;
 
     // Build filter object
     const filter = {};
@@ -32,21 +38,40 @@ const getAllTransactions = async (req, res, next) => {
       ];
     }
 
+    // Get total count for pagination
+    const totalRecords = await Transaction.countDocuments(filter);
+    
+    // Debug parameters before calling helper
+    console.log('🔍 Before getPaginationMeta:', {
+      pageNumber,
+      pageSize,
+      totalRecords,
+      manualCalc: Math.ceil(totalRecords / pageSize)
+    });
+    
+    const pagination = getPaginationMeta(pageNumber, pageSize, totalRecords);
+
+    // Debug logging
+    console.log('🔍 Backend Pagination Debug:', pagination);
+
+    // Get paginated transactions
+    console.log('Pagination Debug:', { skip, limit: pageSize });
     const transactions = await Transaction.find(filter)
       .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(pageSize)
       .populate('qrCode', 'referenceName vpa category');
-
-    const total = transactions.length;
+    
+    console.log('🔍 Query result count:', transactions.length);
 
     res.status(200).json({
       success: true,
       data: {
         transactions,
         pagination: {
-          current: 1,
-          total: 1,
+          ...pagination,
           count: transactions.length,
-          totalRecords: total
+          pageSize
         }
       }
     });
