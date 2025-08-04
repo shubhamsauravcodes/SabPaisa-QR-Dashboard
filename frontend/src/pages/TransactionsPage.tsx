@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useAppDispatch } from '../store/hooks';
+import { useSafeTransactions } from '../store/safeHooks';
 import { addTransactions } from '../store/slices/transactionsSlice';
 import PaymentFeed from '../components/PaymentFeed';
 import { simulatePayment } from '../utils/paymentSimulator';
@@ -11,10 +12,10 @@ const TransactionsPage = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const qrId = searchParams.get('qrId');
-  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [lastRefresh, setLastRefresh] = useState(new Date().toISOString());
 
-  // Redux state
-  const transactions = useAppSelector((state) => state.transactions.transactions);
+  // Redux state with safe hook
+  const transactions = useSafeTransactions();
 
   const filteredTransactions = qrId 
     ? transactions.filter((txn) => txn.qrId === qrId)
@@ -39,14 +40,14 @@ const TransactionsPage = () => {
       }
       
       dispatch(addTransactions(newTransactions));
-      setLastRefresh(new Date());
+      setLastRefresh(new Date().toISOString());
     }, 30000); // Every 30 seconds
 
     return () => clearInterval(refreshInterval);
   }, [qrId, dispatch]);
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('en-IN', { 
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-IN', { 
       hour: '2-digit', 
       minute: '2-digit', 
       second: '2-digit' 

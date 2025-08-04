@@ -1,5 +1,6 @@
 const QRCode = require('../models/QRCode');
 const Transaction = require('../models/Transaction');
+const simulationService = require('../services/simulationService');
 const { v4: uuidv4 } = require('uuid');
 
 // @desc    Get all QR codes
@@ -103,6 +104,7 @@ const getQRCodeById = async (req, res, next) => {
 const createQRCode = async (req, res, next) => {
   try {
     const {
+      qrId: providedQrId,
       vpa,
       referenceName,
       description,
@@ -111,8 +113,49 @@ const createQRCode = async (req, res, next) => {
       notes
     } = req.body;
 
-    // Generate unique QR ID
-    const qrId = `QR${Date.now()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    let qrId;
+    
+    // Use provided QR ID if available, otherwise generate a new one
+    if (providedQrId) {
+      // Validate the provided QR ID format
+      const qrIdRegex = /^[A-Z0-9]{5}$/;
+      if (!qrIdRegex.test(providedQrId)) {
+        return res.status(400).json({
+          success: false,
+          error: 'QR ID must be exactly 5 characters long and contain only uppercase letters (A-Z) and numbers (0-9)'
+        });
+      }
+      
+      // Check if the provided QR ID is already in use
+      const existingQR = await QRCode.findOne({ qrId: providedQrId });
+      if (existingQR) {
+        return res.status(400).json({
+          success: false,
+          error: 'This QR ID is already in use. Please choose a different one.'
+        });
+      }
+      
+      qrId = providedQrId;
+    } else {
+      // Generate unique QR ID (5-character alphanumeric)
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      do {
+        qrId = Array.from({ length: 5 }, () => {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          return chars.charAt(Math.floor(Math.random() * chars.length));
+        }).join('');
+        attempts++;
+        
+        if (attempts >= maxAttempts) {
+          return res.status(500).json({
+            success: false,
+            error: 'Unable to generate unique QR ID. Please try again.'
+          });
+        }
+      } while (await QRCode.findOne({ qrId }));
+    }
 
     const qrCode = await QRCode.create({
       qrId,
@@ -235,7 +278,7 @@ const toggleQRStatus = async (req, res, next) => {
 };
 
 // @desc    Toggle QR code simulation
-// @route   PATCH /api/qr/:id/simulation
+// @route   POST /api/qr/:id/simulation
 // @access  Public
 const toggleQRSimulation = async (req, res, next) => {
   try {
@@ -255,7 +298,17 @@ const toggleQRSimulation = async (req, res, next) => {
       });
     }
 
+    // Toggle simulation in database
     await qrCode.toggleSimulation();
+    
+    // Start or stop the actual simulation process
+    if (qrCode.simulationActive) {
+      simulationService.startSimulation(qrCode.qrId);
+      console.log(`🚀 Started simulation process for QR: ${qrCode.qrId}`);
+    } else {
+      simulationService.stopSimulation(qrCode.qrId);
+      console.log(`⏹️ Stopped simulation process for QR: ${qrCode.qrId}`);
+    }
 
     res.status(200).json({
       success: true,

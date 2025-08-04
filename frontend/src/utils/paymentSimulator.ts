@@ -46,7 +46,7 @@ export function simulatePayment(qrId: string, maxAmount?: string): Transaction {
     amount,
     status,
     utr: generateUTR(),
-    timestamp: new Date(),
+    timestamp: new Date().toISOString(),
     customerInfo: generateCustomerInfo()
   };
 } 

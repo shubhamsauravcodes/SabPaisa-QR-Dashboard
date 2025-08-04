@@ -19,7 +19,9 @@ const initialState: TransactionsState = {
 export const fetchTransactions = createAsyncThunk('transactions/fetchTransactions', async (params?: { qrId?: string; status?: string; limit?: number }, { rejectWithValue }) => {
   try {
     const response = await transactionApi.getAll(params);
-    return response.data.transactions;
+    // Ensure we always return an array
+    const transactions = response.data?.transactions || response.data || [];
+    return Array.isArray(transactions) ? transactions : [];
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -40,6 +42,10 @@ const transactionsSlice = createSlice({
   reducers: {
     // Add a new transaction
     addTransaction: (state, action: PayloadAction<Transaction>) => {
+      // Ensure transactions is an array before unshifting
+      if (!Array.isArray(state.transactions)) {
+        state.transactions = [];
+      }
       state.transactions.unshift(action.payload); // Add to beginning for newest first
     },
 
@@ -102,7 +108,8 @@ const transactionsSlice = createSlice({
     });
     builder.addCase(fetchTransactions.fulfilled, (state, action) => {
       state.loading = false;
-      state.transactions = action.payload;
+      // Ensure payload is always an array
+      state.transactions = Array.isArray(action.payload) ? action.payload : [];
     });
     builder.addCase(fetchTransactions.rejected, (state, action) => {
       state.loading = false;

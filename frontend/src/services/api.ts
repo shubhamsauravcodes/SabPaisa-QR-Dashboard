@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { QRCode, Transaction } from '../types';
+import { serializeDatesInObject } from '../utils/dateUtils';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -24,10 +25,16 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor for error handling and date serialization
 api.interceptors.response.use(
   (response) => {
     console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`);
+    
+    // Serialize dates in response data to fix Redux non-serializable issues
+    if (response.data && typeof response.data === 'object') {
+      response.data = serializeDatesInObject(response.data);
+    }
+    
     return response;
   },
   (error) => {
@@ -122,9 +129,9 @@ export const qrApi = {
     return response.data;
   },
 
-  // Toggle QR code simulation
-  toggleSimulation: async (qrId: string): Promise<ApiResponse<QRCode>> => {
-    const response = await api.patch(`/qr/${qrId}/simulation`);
+  // Toggle QR code simulation (deprecated - use simulationApi.toggleSimulation instead)
+  toggleSimulation: async (qrId: string): Promise<ApiResponse<{ qrId: string; simulationActive: boolean; message: string }>> => {
+    const response = await api.post(`/simulation/${qrId}/toggle`);
     return response.data;
   },
 

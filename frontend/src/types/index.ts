@@ -7,8 +7,8 @@ export interface QRCode {
   category: 'Retail' | 'Rental' | 'Education' | 'Custom';
   notes?: string;
   status: 'Active' | 'Inactive';
-  createdAt: Date;
-  updatedAt?: Date; // Added updatedAt from backend
+  createdAt: string; // Changed from Date to string for serialization
+  updatedAt?: string; // Changed from Date to string for serialization
   simulationActive: boolean;
 }
 
@@ -18,10 +18,12 @@ export interface Transaction {
   amount: number;
   status: 'Success' | 'Failed' | 'Pending';
   utr: string;
-  timestamp: Date;
+  timestamp: string; // Changed from Date to string for serialization
+  createdAt?: string; // Add createdAt from MongoDB timestamps
+  updatedAt?: string; // Add updatedAt from MongoDB timestamps
   customerInfo: {
     name: string;
     phone: string;
     upiApp: string;
   };
-} 
+}

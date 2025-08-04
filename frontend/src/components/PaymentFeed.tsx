@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
+import { formatDisplayDate, deserializeDate } from '../utils/dateUtils';
 
-const PaymentFeed = ({ transactions }) => {
+// Safe array function to ensure transactions is always an array
+const ensureArray = (arr: any): any[] => Array.isArray(arr) ? arr : [];
+
+const PaymentFeed = ({ transactions: rawTransactions }) => {
+  // Ensure transactions is always an array
+  const transactions = ensureArray(rawTransactions);
   const [filterQrId, setFilterQrId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterAmountRange, setFilterAmountRange] = useState('');
@@ -25,7 +31,7 @@ const PaymentFeed = ({ transactions }) => {
     // Date range filtering
     let matchesDate = true;
     if (filterDateFrom || filterDateTo) {
-      const txnDate = new Date(txn.timestamp);
+      const txnDate = deserializeDate(txn.timestamp);
       if (filterDateFrom) {
         const fromDate = new Date(filterDateFrom);
         matchesDate = matchesDate && txnDate >= fromDate;
@@ -40,8 +46,8 @@ const PaymentFeed = ({ transactions }) => {
     return matchesQrId && matchesStatus && matchesAmount && matchesUtr && matchesCustomerInfo && matchesDate;
   });
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleString('en-IN');
+  const formatDate = (dateString) => {
+    return formatDisplayDate(dateString);
   };
 
   const getStatusColor = (status) => {

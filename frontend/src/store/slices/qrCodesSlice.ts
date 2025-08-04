@@ -19,7 +19,9 @@ const initialState: QRCodesState = {
 export const fetchQRCodes = createAsyncThunk('qrCodes/fetchQRCodes', async (_, { rejectWithValue }) => {
   try {
     const response = await qrApi.getAll();
-    return response.data.qrCodes;
+    // Ensure we always return an array
+    const qrCodes = response.data?.qrCodes || response.data || [];
+    return Array.isArray(qrCodes) ? qrCodes : [];
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -119,7 +121,23 @@ const qrCodesSlice = createSlice({
 
     // Replace all QR codes (for bulk operations)
     replaceQRCodes: (state, action: PayloadAction<QRCode[]>) => {
-      state.qrCodes = action.payload;
+      console.log('🔄 Redux: replaceQRCodes called with payload:', action.payload);
+      if (Array.isArray(action.payload)) {
+        state.qrCodes = action.payload;
+        console.log('✅ Redux: QR codes updated, new count:', action.payload.length);
+        // Log details of each QR code being stored
+        action.payload.forEach((qr, index) => {
+          console.log(`Redux QR ${index + 1}:`, {
+            qrId: qr.qrId,
+            referenceName: qr.referenceName,
+            status: qr.status,
+            category: qr.category
+          });
+        });
+      } else {
+        console.warn('❌ Redux: replaceQRCodes action payload is not an array:', action.payload);
+        state.qrCodes = [];
+      }
     },
   },
   extraReducers: (builder) => {
@@ -130,7 +148,8 @@ const qrCodesSlice = createSlice({
     });
     builder.addCase(fetchQRCodes.fulfilled, (state, action) => {
       state.loading = false;
-      state.qrCodes = action.payload;
+      // Ensure payload is always an array
+      state.qrCodes = Array.isArray(action.payload) ? action.payload : [];
     });
     builder.addCase(fetchQRCodes.rejected, (state, action) => {
       state.loading = false;
@@ -144,6 +163,10 @@ const qrCodesSlice = createSlice({
     });
     builder.addCase(createNewQRCode.fulfilled, (state, action) => {
       state.loading = false;
+      // Ensure qrCodes is an array before pushing
+      if (!Array.isArray(state.qrCodes)) {
+        state.qrCodes = [];
+      }
       state.qrCodes.push(action.payload);
     });
     builder.addCase(createNewQRCode.rejected, (state, action) => {

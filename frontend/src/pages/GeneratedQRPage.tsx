@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { simulatePayment } from '../utils/paymentSimulator';
 import { useNavigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addQRCode, updateQRCode, deleteQRCode, toggleQRStatus, toggleSimulation } from '../store/slices/qrCodesSlice';
+import { useAppDispatch } from '../store/hooks';
+import { useSafeQRCodes, useSafeTransactions, useFilteredQRCodes } from '../store/safeHooks';
+import { replaceQRCodes, toggleQRStatus, toggleSimulation } from '../store/slices/qrCodesSlice';
+import { qrApi, simulationApi } from '../services/api';
 import QRCode from 'react-qr-code';
 import QRGenerationModal from '../components/QRGenerationModal';
 import Modal from '../components/Modal';
@@ -13,8 +15,8 @@ import type { QRCode as QRCodeType, Transaction } from '../types';
 const GeneratedQRPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const qrCodes = useAppSelector((state) => state.qrCodes.qrCodes) as QRCodeType[];
-  const transactions = useAppSelector((state) => state.transactions.transactions) as Transaction[];
+  const qrCodes = useSafeQRCodes();
+  const transactions = useSafeTransactions();
 
   const [filterId, setFilterId] = useState('');
   const [filterName, setFilterName] = useState('');
@@ -25,6 +27,72 @@ const GeneratedQRPage: React.FC = () => {
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editInitialData, setEditInitialData] = useState<any>({});
   const [showCardIdx, setShowCardIdx] = useState<number | null>(null);
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null); // Track which QR is being toggled
+  const [loading, setLoading] = useState(false);
+
+  // Function to refresh QR data from backend
+  const refreshData = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Fetching QR codes from API...');
+      const response = await qrApi.getAll({ limit: 1000 }); // Get all QR codes
+      console.log('📡 Raw API Response:', response);
+      console.log('🔍 Response structure analysis:');
+      console.log('  - response type:', typeof response);
+      console.log('  - response.data type:', typeof response.data);
+      console.log('  - response.data:', response.data);
+      if (response.data) {
+        console.log('  - response.data.qrCodes type:', typeof response.data.qrCodes);
+        console.log('  - response.data.qrCodes:', response.data.qrCodes);
+        console.log('  - response.data.qrCodes is array:', Array.isArray(response.data.qrCodes));
+        console.log('  - Object.keys(response.data):', Object.keys(response.data));
+      }
+      
+      // Extract QR codes from the nested response structure
+      let qrCodesData;
+      if (response.data && response.data.qrCodes && Array.isArray(response.data.qrCodes)) {
+        qrCodesData = response.data.qrCodes;
+      } else if (Array.isArray(response.data)) {
+        qrCodesData = response.data;
+      } else {
+        qrCodesData = [];
+      }
+      
+      console.log('📊 Extracted QR Codes Data:', qrCodesData);
+      console.log('📊 Data type:', typeof qrCodesData);
+      console.log('📊 Is Array:', Array.isArray(qrCodesData));
+      
+      // Ensure we have an array
+      const qrArray = Array.isArray(qrCodesData) ? qrCodesData : [];
+      console.log('🔢 Number of QR codes found:', qrArray.length);
+      
+      // Log each QR code for debugging
+      if (qrArray.length > 0) {
+        qrArray.forEach((qr, index) => {
+          console.log(`QR ${index + 1}:`, {
+            qrId: qr.qrId,
+            referenceName: qr.referenceName,
+            status: qr.status,
+            category: qr.category
+          });
+        });
+      } else {
+        console.log('⚠️ No QR codes found in response');
+      }
+      
+      dispatch(replaceQRCodes(qrArray));
+      console.log('✅ QR data refreshed successfully');
+    } catch (error) {
+      console.error('❌ Failed to refresh QR data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load QR data on component mount
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   // Simulate UPI transactions every second for QR codes with simulationActive=true
   React.useEffect(() => {
@@ -42,70 +110,147 @@ const GeneratedQRPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [qrCodes, dispatch]);
 
-
   const categories = [
     'Retail', 'Rental', 'Education', 'Custom'
   ];
 
-  const filteredQRCodes = useMemo(() => {
-    return qrCodes.filter(qr => {
-      const matchesId = filterId ? qr.qrId.toLowerCase().includes(filterId.toLowerCase()) : true;
-      const matchesName = filterName ? qr.referenceName.toLowerCase().includes(filterName.toLowerCase()) : true;
-      const matchesCategory = filterCategory ? qr.category === filterCategory : true;
-      const matchesStatus = filterStatus ? qr.status === filterStatus : true;
-      return matchesId && matchesName && matchesCategory && matchesStatus;
-    });
-  }, [qrCodes, filterId, filterName, filterCategory, filterStatus]);
+  const filteredQRCodes = useFilteredQRCodes({
+    id: filterId,
+    name: filterName,
+    category: filterCategory,
+    status: filterStatus
+  });
 
-  const handleCreateQR = (data: any) => {
-    // Use QR ID and VPA as provided by the modal (already validated and formatted)
-    dispatch(addQRCode({
-      qrId: data.qrId,
-      vpa: data.vpa,
-      referenceName: data.referenceName,
-      description: data.description || '',
-      maxAmount: data.maxAmount || '',
-      category: data.category || 'Other',
-      notes: data.notes || '',
-      status: 'Active',
-      simulationActive: false,
-      createdAt: new Date()
-    }));
-    setModalOpen(false);
+  const handleCreateQR = async (data: { qrId: string; vpa: string; referenceName: string; description?: string; maxAmount?: string; category?: string; notes?: string }) => {
+    try {
+        console.log('Creating QR code with data:', data);
+        const payload = {
+            ...data,
+            category: data.category || 'Other', // Ensure category is always a string
+        };
+
+        const response = await qrApi.create(payload);
+        console.log('API Response:', response);
+
+        if (!response.data) {
+            throw new Error('Failed to create QR code: No data returned');
+        }
+
+        setModalOpen(false);
+        // Refresh the data to show the new QR code
+        await refreshData();
+        console.log('QR code created successfully');
+    } catch (err) {
+        const error = err as { response?: { data?: { message?: string }; status?: number }; request?: XMLHttpRequest; message?: string };
+        console.error('Failed to create QR code:', error);
+
+        let errorMessage = 'Unknown error occurred';
+        if (error.response) {
+            errorMessage = error.response.data?.message || `Server Error: ${error.response.status}`;
+        } else if (error.request) {
+            errorMessage = 'Network Error: No response received from the server';
+        } else {
+            errorMessage = error.message || 'An unexpected error occurred';
+        }
+
+        alert(`Failed to create QR code: ${errorMessage}`);
+    }
   };
 
-  const handleEditQR = (data: any) => {
+  const handleEditQR = async (data: { referenceName: string; description?: string; maxAmount?: string; category?: string; notes?: string }) => {
     if (editIdx !== null) {
-      dispatch(updateQRCode({
-        index: editIdx,
-        qrCode: {
-          ...qrCodes[editIdx],
+      try {
+        const qrId = qrCodes[editIdx].qrId;
+        await qrApi.update(qrId, {
           referenceName: data.referenceName,
           description: data.description || '',
-          maxAmount: data.maxAmount || '',
+          maxAmount: data.maxAmount || '0',
           category: data.category || 'Other',
           notes: data.notes || ''
+        });
+        setEditIdx(null);
+        setEditInitialData({});
+        // Refresh the data to show updated QR code
+        await refreshData();
+        console.log('QR code updated successfully');
+      } catch (err) {
+        const error = err as { response?: { data?: { message?: string }; status?: number }; request?: XMLHttpRequest; message?: string };
+        console.error('Failed to update QR code:', error);
+
+        let errorMessage = 'Unknown error occurred';
+        if (error.response) {
+            errorMessage = error.response.data?.message || `Server Error: ${error.response.status}`;
+        } else if (error.request) {
+            errorMessage = 'Network Error: No response received from the server';
+        } else {
+            errorMessage = error.message || 'An unexpected error occurred';
         }
-      }));
-      setEditIdx(null);
+
+        alert(`Failed to update QR code: ${errorMessage}`);
+      }
     }
   };
 
-  const handleDeleteQR = (idx: number) => {
+  const handleToggleStatus = async (idx: number) => {
+    const qrId = qrCodes[idx].qrId;
+    try {
+      await qrApi.toggleStatus(qrId);
+      // Refresh the data to show updated status
+      await refreshData();
+      console.log('QR code status toggled successfully');
+    } catch (error) {
+      console.error('Failed to toggle QR status:', error);
+    }
+  };
+
+  const toggleQrSimulation = async (idx: number) => {
+    const qrId = qrCodes[idx].qrId;
+    const currentStatus = qrCodes[idx].simulationActive;
+
+    setToggleLoading(qrId); // Set loading state
+
+    try {
+        // Call the API to toggle simulation
+        await simulationApi.toggleSimulation(qrId);
+        
+        // Refresh the data to ensure UI updates
+        await refreshData();
+
+        console.log(`🎉 QR code simulation ${!currentStatus ? 'started' : 'stopped'} successfully`);
+    } catch (err) {
+        const error = err as { response?: { data?: { message?: string }; status?: number }; request?: XMLHttpRequest; message?: string };
+        console.error('❌ Failed to toggle simulation:', error);
+
+        let errorMessage = 'Unknown error occurred';
+        if (error.response) {
+            // Server responded with a status code outside the 2xx range
+            errorMessage = error.response.data?.message || `Server Error: ${error.response.status}`;
+        } else if (error.request) {
+            // Request was made but no response received
+            errorMessage = 'Network Error: No response received from the server';
+        } else {
+            // Something happened in setting up the request
+            errorMessage = error.message || 'An unexpected error occurred';
+        }
+
+        alert(`Failed to ${currentStatus ? 'stop' : 'start'} simulation: ${errorMessage}`);
+    } finally {
+        setToggleLoading(null); // Clear loading state
+    }
+  };
+
+  const handleDeleteQRById = async (idx: number) => {
     if (window.confirm('Are you sure you want to delete this QR code?')) {
-      dispatch(deleteQRCode(idx));
+      const qrId = qrCodes[idx].qrId;
+      try {
+        await qrApi.delete(qrId);
+        // Refresh the data to remove deleted QR code
+        await refreshData();
+        console.log('QR code deleted successfully');
+      } catch (error) {
+        console.error('Failed to delete QR code:', error);
+      }
     }
-  };
-
-  const handleToggleStatus = (idx: number) => {
-    dispatch(toggleQRStatus(idx));
-    if (qrCodes[idx].status === "Active" && qrCodes[idx].simulationActive) {
-      dispatch(toggleSimulation(idx));
-    }
-  };
-
-  const toggleQrSimulation = (idx: number) => {
-    dispatch(toggleSimulation(idx));
   };
 
   const handleViewQrTransactions = (qrId: string) => {
@@ -543,7 +688,7 @@ const GeneratedQRPage: React.FC = () => {
                               fontWeight: 500,
                               cursor: 'pointer',
                             }}
-                            onClick={() => handleDeleteQR(origIdx)}
+                            onClick={() => handleDeleteQRById(origIdx)}
                           >
                             Delete
                           </button>
@@ -556,21 +701,23 @@ const GeneratedQRPage: React.FC = () => {
                         >
                           <button
                             onClick={() => toggleQrSimulation(origIdx)}
-                            disabled={qr.status === 'Inactive'}
+                            disabled={qr.status === 'Inactive' || toggleLoading === qr.qrId}
                             style={{
-                              background: qr.simulationActive
-                                ? 'linear-gradient(90deg,#f093fb,#f5576c)'
-                                : 'linear-gradient(90deg,#43e97b,#38f9d7)',
+                              background: toggleLoading === qr.qrId 
+                                ? 'linear-gradient(90deg,#9ca3af,#6b7280)'
+                                : qr.simulationActive
+                                  ? 'linear-gradient(90deg,#f093fb,#f5576c)'
+                                  : 'linear-gradient(90deg,#43e97b,#38f9d7)',
                               color: 'white',
                               border: 'none',
                               borderRadius: '6px',
                               padding: '6px 16px',
                               fontWeight: 600,
-                              cursor: qr.status === 'Inactive' ? 'not-allowed' : 'pointer',
-                              opacity: qr.status === 'Inactive' ? 0.5 : 1,
+                              cursor: (qr.status === 'Inactive' || toggleLoading === qr.qrId) ? 'not-allowed' : 'pointer',
+                              opacity: (qr.status === 'Inactive' || toggleLoading === qr.qrId) ? 0.7 : 1,
                             }}
                           >
-                            {qr.simulationActive ? 'Stop' : 'Start'}
+                            {toggleLoading === qr.qrId ? 'Loading...' : (qr.simulationActive ? 'Stop' : 'Start')}
                           </button>
                         </td>
                       </tr>

@@ -43,10 +43,10 @@ router.delete('/:id', deleteQRCode);
 // @access  Public
 router.patch('/:id/status', toggleQRStatus);
 
-// @route   PATCH /api/qr/:id/simulation
+// @route   POST /api/qr/:id/simulation
 // @desc    Toggle QR code simulation
 // @access  Public
-router.patch('/:id/simulation', toggleQRSimulation);
+router.post('/:id/simulation', toggleQRSimulation);
 
 // @route   GET /api/qr/:id/transactions
 // @desc    Get all transactions for a specific QR code

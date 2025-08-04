@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useAppDispatch } from '../store/hooks';
+import { useSafeQRCodes, useSafeTransactions, useQRCodesStats, useTransactionsStats, useFilteredQRCodes } from '../store/safeHooks';
 import { 
   fetchQRCodes,
   createNewQRCode,
   updateQRCodeDetails,
-  deleteQRCodeById
+  deleteQRCodeById,
+  updateQRCode,
+  deleteQRCode,
+  toggleQRStatus,
+  toggleSimulation
 } from '../store/slices/qrCodesSlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
 import QRGenerationModal from "./QRGenerationModal";
@@ -18,8 +23,10 @@ function Dashboard() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   
-  const qrCodes = useAppSelector((state) => state.qrCodes.qrCodes);
-  const transactions = useAppSelector((state) => state.transactions.transactions);
+  const qrCodes = useSafeQRCodes();
+  const transactions = useSafeTransactions();
+  const qrStats = useQRCodesStats();
+  const transactionStats = useTransactionsStats();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [showCardIdx, setShowCardIdx] = useState(null);
@@ -64,7 +71,7 @@ function Dashboard() {
     dispatch(toggleQRStatus(idx));
     
     // If QR is being set to Inactive, also stop its simulation
-    if (qrCodes[idx].status === "Active") {
+    if (Array.isArray(qrCodes) && qrCodes[idx] && qrCodes[idx].status === "Active") {
       // QR is being set to Inactive, stop simulation
       if (qrCodes[idx].simulationActive) {
         dispatch(toggleSimulation(idx));
@@ -88,13 +95,13 @@ function Dashboard() {
     dispatch(toggleSimulation(idx));
   };
 
-  // Phase 3: Filtered QR Codes
-  const filteredQRCodes = qrCodes.filter((qr) =>
-    (filterId === "" || qr.qrId.toLowerCase().includes(filterId.toLowerCase())) &&
-    (filterName === "" || qr.referenceName.toLowerCase().includes(filterName.toLowerCase())) &&
-    (filterCategory === "" || qr.category === filterCategory) &&
-    (filterStatus === "" || qr.status === filterStatus)
-  );
+  // Phase 3: Filtered QR Codes using safe hook
+  const filteredQRCodes = useFilteredQRCodes({
+    id: filterId,
+    name: filterName,
+    category: filterCategory,
+    status: filterStatus
+  });
 
   const categories = ["Retail", "Rental", "Education", "Custom"];
 
@@ -118,7 +125,7 @@ function Dashboard() {
         onClick={() => navigate('/generated-qr')}
         >
           <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>Total QR Codes</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{qrCodes.length}</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{qrStats.total}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>Click to view all QR codes</div>
         </div>
 
@@ -136,7 +143,7 @@ function Dashboard() {
         onClick={() => navigate('/transactions')}
         >
           <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>Total Transactions</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{transactions.length}</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{transactionStats.total}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>Click to view all transactions</div>
         </div>
 
@@ -154,7 +161,7 @@ function Dashboard() {
         onClick={() => navigate('/generated-qr')}
         >
           <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>Active QR Codes</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{qrCodes.filter(qr => qr.status === "Active").length}</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{qrStats.active}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>Currently active QR codes</div>
         </div>
 
@@ -172,13 +179,13 @@ function Dashboard() {
         onClick={() => navigate('/generated-qr')}
         >
           <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>Active Simulations</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{qrCodes.filter(qr => qr.simulationActive).length}</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{qrStats.withSimulation}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>Running payment simulations</div>
         </div>
       </div>
 
       {/* Phase 2: Simulation Status Banner */}
-      {qrCodes.filter(qr => qr.simulationActive).length > 0 && (
+      {qrStats.withSimulation > 0 && (
         <div style={{
           background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
           border: '1px solid #ffb74d',
@@ -191,7 +198,7 @@ function Dashboard() {
           boxShadow: '0 4px 16px rgba(255, 183, 77, 0.2)'
         }}>
           <span style={{ color: '#2e7d32', fontWeight: '600' }}>
-            Simulation Active: Generating payments every 5 seconds for {qrCodes.filter(qr => qr.simulationActive).length} active QR{qrCodes.filter(qr => qr.simulationActive).length === 1 ? '' : 's'}
+            Simulation Active: Generating payments every 5 seconds for {qrStats.withSimulation} active QR{qrStats.withSimulation === 1 ? '' : 's'}
           </span>
           <button 
             onClick={() => navigate('/generated-qr')}
@@ -310,17 +317,31 @@ function Dashboard() {
           <div>
             <h3 style={{ margin: '0 0 16px 0', color: '#666', fontSize: '18px', fontWeight: '600' }}>Latest QR Codes</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {qrCodes.slice(0, 3).map((qr, idx) => (
-                <div key={qr.qrId} style={{
+              {qrCodes.length > 0 ? (
+                qrCodes.slice(0, 3).map((qr, idx) => (
+                  <div key={qr.qrId} style={{
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    background: '#fafafa'
+                  }}>
+                    <div style={{ fontWeight: '600', color: '#333' }}>{qr.referenceName}</div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>ID: {qr.qrId} • {qr.category}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{
                   padding: '12px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '8px',
-                  background: '#fafafa'
+                  background: '#fafafa',
+                  textAlign: 'center',
+                  color: '#666',
+                  fontSize: '14px'
                 }}>
-                  <div style={{ fontWeight: '600', color: '#333' }}>{qr.referenceName}</div>
-                  <div style={{ fontSize: '12px', color: '#666' }}>ID: {qr.qrId} • {qr.category}</div>
+                  No QR codes yet
                 </div>
-              ))}
+              )}
             </div>
           </div>
           
@@ -372,18 +393,16 @@ function Dashboard() {
       />
 
       {/* Phase 6: Show QR Modal */}
-      {showCardIdx !== null && (
+      {showCardIdx !== null && Array.isArray(qrCodes) && qrCodes[showCardIdx] && (
         <Modal isOpen={showCardIdx !== null} onClose={() => setShowCardIdx(null)}>
-          {showCardIdx !== null && (
-            <QRCodeCard qr={{
-              qrId: qrCodes[showCardIdx].qrId,
-              vpa: qrCodes[showCardIdx].vpa,
-              referenceName: qrCodes[showCardIdx].referenceName,
-              maxAmount: qrCodes[showCardIdx].maxAmount || '',
-              category: qrCodes[showCardIdx].category,
-              status: qrCodes[showCardIdx].status,
-            }} />
-          )}
+          <QRCodeCard qr={{
+            qrId: qrCodes[showCardIdx].qrId,
+            vpa: qrCodes[showCardIdx].vpa,
+            referenceName: qrCodes[showCardIdx].referenceName,
+            maxAmount: qrCodes[showCardIdx].maxAmount || '',
+            category: qrCodes[showCardIdx].category,
+            status: qrCodes[showCardIdx].status,
+          }} />
         </Modal>
       )}
 

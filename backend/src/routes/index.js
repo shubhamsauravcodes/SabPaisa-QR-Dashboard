@@ -25,7 +25,7 @@ router.get('/', (req, res) => {
         'PUT /api/qr/:id': 'Update QR code',
         'DELETE /api/qr/:id': 'Delete QR code',
         'PATCH /api/qr/:id/status': 'Toggle QR code status',
-        'PATCH /api/qr/:id/simulation': 'Toggle simulation',
+        'POST /api/qr/:id/simulation': 'Toggle simulation (deprecated - use /api/simulation endpoints)',
         'GET /api/qr/:id/transactions': 'Get transactions for QR code'
       },
       transactions: {
