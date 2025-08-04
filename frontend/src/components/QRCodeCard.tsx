@@ -24,20 +24,23 @@ const upiIcons = [
 
 const QRCodeCard: React.FC<QRCodeCardProps> = ({ qr, onDownload }) => {
   const cardRef = useRef<HTMLDivElement>(null);
+  const downloadableAreaRef = useRef<HTMLDivElement>(null);
   const qrCodeRef = useRef<HTMLDivElement>(null);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   const handleDownloadPNG = async () => {
-    if (qrCodeRef.current) {
+    if (downloadableAreaRef.current) {
       try {
-        const canvas = await html2canvas(qrCodeRef.current, {
+        const canvas = await html2canvas(downloadableAreaRef.current, {
           backgroundColor: "#ffffff",
           scale: 2,
+          useCORS: true,
         });
         const link = document.createElement("a");
         link.download = `qr-${qr.qrId}.png`;
         link.href = canvas.toDataURL();
         link.click();
+        setShowDownloadModal(false); // Close modal after download
         if (onDownload) onDownload();
       } catch (error) {
         console.error("Error downloading QR PNG:", error);
@@ -46,24 +49,26 @@ const QRCodeCard: React.FC<QRCodeCardProps> = ({ qr, onDownload }) => {
   };
 
   const handleDownloadPDF = async () => {
-    if (qrCodeRef.current) {
+    if (downloadableAreaRef.current) {
       try {
-        const canvas = await html2canvas(qrCodeRef.current, {
+        const canvas = await html2canvas(downloadableAreaRef.current, {
           backgroundColor: "#ffffff",
           scale: 2,
+          useCORS: true,
         });
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF();
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        // Center the QR code
+        // Center the complete QR card
         const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = 80;
+        const imgWidth = 120; // Increased width for the complete card
         const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
         const x = (pageWidth - imgWidth) / 2;
         const y = (pageHeight - imgHeight) / 2;
         pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
         pdf.save(`qr-${qr.qrId}.pdf`);
+        setShowDownloadModal(false); // Close modal after download
         if (onDownload) onDownload();
       } catch (error) {
         console.error("Error downloading QR PDF:", error);
@@ -100,61 +105,72 @@ const QRCodeCard: React.FC<QRCodeCardProps> = ({ qr, onDownload }) => {
       boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
       textAlign: "center",
     }}>
-      <div style={{ marginBottom: 12, background: '#222', padding: '8px 0', borderRadius: 8, display: 'flex', justifyContent: 'center' }}>
-        <img src={sabpaisaLogo} alt="SabPaisa Logo" style={{ height: 40, width: 'auto', maxWidth: '80%', display: 'block' }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 16 }}>
-        {upiIcons}
-      </div>
-      <div ref={qrCodeRef} style={{ position: 'relative', margin: "0 auto 16px", background: "#fff", padding: 8, display: "inline-block", width: 144, height: 144 }}>
-        <QRCode
-          value={JSON.stringify({
-            QR_Identifier: qr.qrId,
-            VPA: qr.vpa,
-            Reference_Name: qr.referenceName,
-            Max_Amount: qr.maxAmount,
-            Category: qr.category,
-          })}
-          size={128}
-        />
-        <span
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: 'rgba(44,62,80,0.65)', // dark blue overlay
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-            zIndex: 2,
-          }}
-        >
-          <img
-            src={sabpaisaLogo}
-            alt="SabPaisa Logo"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: '6px',
-              objectFit: 'contain',
-              pointerEvents: 'none',
-              background: 'transparent',
-            }}
+      {/* Downloadable area - everything except the button */}
+      <div ref={downloadableAreaRef} style={{ 
+        width: "100%", 
+        padding: "20px", 
+        margin: "10px", 
+        backgroundColor: "#ffffff",
+        borderRadius: "8px",
+        boxSizing: "border-box"
+      }}>
+        <div style={{ marginBottom: 12, background: '#222', padding: '8px 0', borderRadius: 8, display: 'flex', justifyContent: 'center' }}>
+          <img src={sabpaisaLogo} alt="SabPaisa Logo" style={{ height: 40, width: 'auto', maxWidth: '80%', display: 'block' }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 16 }}>
+          {upiIcons}
+        </div>
+        <div ref={qrCodeRef} style={{ position: 'relative', margin: "0 auto 16px", background: "#fff", padding: 8, display: "inline-block", width: 144, height: 144 }}>
+          <QRCode
+            value={JSON.stringify({
+              QR_Identifier: qr.qrId,
+              VPA: qr.vpa,
+              Reference_Name: qr.referenceName,
+              Max_Amount: qr.maxAmount,
+              Category: qr.category,
+            })}
+            size={128}
           />
-        </span>
+          <span
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: 'rgba(44,62,80,0.65)', // dark blue overlay
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+              zIndex: 2,
+            }}
+          >
+            <img
+              src={sabpaisaLogo}
+              alt="SabPaisa Logo"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '6px',
+                objectFit: 'contain',
+                pointerEvents: 'none',
+                background: 'transparent',
+              }}
+            />
+          </span>
+        </div>
+        <div style={{ textAlign: "left", marginTop: 12 }}>
+          <div><strong>Reference Name:</strong> {qr.referenceName}</div>
+          <div><strong>VPA:</strong> {qr.vpa}</div>
+          <div><strong>Max Amount:</strong> {qr.maxAmount || "-"}</div>
+          <div><strong>Category:</strong> {qr.category}</div>
+          <div><strong>QR Identifier:</strong> {qr.qrId}</div>
+        </div>
       </div>
-      <div style={{ textAlign: "left", marginTop: 12 }}>
-        <div><strong>Reference Name:</strong> {qr.referenceName}</div>
-        <div><strong>VPA:</strong> {qr.vpa}</div>
-        <div><strong>Max Amount:</strong> {qr.maxAmount || "-"}</div>
-        <div><strong>Category:</strong> {qr.category}</div>
-        <div><strong>QR Identifier:</strong> {qr.qrId}</div>
-      </div>
+      {/* Button outside downloadable area */}
       <button onClick={() => setShowDownloadModal(true)} style={{ marginTop: 16, padding: "8px 16px", background: "#1e88e5", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>
         Download QR Code
       </button>
@@ -181,61 +197,18 @@ const QRCodeCard: React.FC<QRCodeCardProps> = ({ qr, onDownload }) => {
             minWidth: 320,
             textAlign: "center",
           }}>
-            <div style={{ marginBottom: 24 }}>
-              <div ref={qrCodeRef} style={{ position: 'relative', background: "#fff", padding: 8, display: "inline-block", width: 144, height: 144 }}>
-                <QRCode
-                  value={JSON.stringify({
-                    QR_Identifier: qr.qrId,
-                    VPA: qr.vpa,
-                    Reference_Name: qr.referenceName,
-                    Max_Amount: qr.maxAmount,
-                    Category: qr.category,
-                  })}
-                  size={128}
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: 'rgba(44,62,80,0.65)', // dark blue overlay
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-                    zIndex: 2,
-                  }}
-                >
-                  <img
-                    src={sabpaisaLogo}
-                    alt="SabPaisa Logo"
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: '6px',
-                      objectFit: 'contain',
-                      pointerEvents: 'none',
-                      background: 'transparent',
-                    }}
-                  />
-                </span>
-              </div>
-            </div>
+            <h3 style={{ marginBottom: 24, color: "#333", fontSize: 18 }}>Choose Download Format</h3>
             <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
-              <button onClick={handleDownloadPNG} style={{ padding: "10px 24px", background: "#1e88e5", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 500 }}>
+              <button onClick={handleDownloadPNG} style={{ padding: "12px 24px", background: "#1e88e5", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 500, fontSize: 14 }}>
                 Download as PNG
               </button>
-              <button onClick={handleDownloadPDF} style={{ padding: "10px 24px", background: "#43a047", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 500 }}>
+              <button onClick={handleDownloadPDF} style={{ padding: "12px 24px", background: "#43a047", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 500, fontSize: 14 }}>
                 Download as PDF
               </button>
-              <button onClick={() => setShowDownloadModal(false)} style={{ padding: "10px 24px", background: "#e53935", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 500 }}>
-                Cancel
-              </button>
             </div>
+            <button onClick={() => setShowDownloadModal(false)} style={{ marginTop: 16, padding: "8px 16px", background: "transparent", color: "#666", border: "1px solid #ddd", borderRadius: 6, cursor: "pointer", fontWeight: 400 }}>
+              Cancel
+            </button>
           </div>
         </div>
       )}

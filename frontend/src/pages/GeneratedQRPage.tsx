@@ -665,7 +665,7 @@ const GeneratedQRPage: React.FC = () => {
                             fontWeight: 600,
                           }}
                         >
-                          ₹{qr.maxAmount}
+                          {qr.maxAmount ? `₹${qr.maxAmount}` : '-'}
                         </td>
                         <td
                           style={{
