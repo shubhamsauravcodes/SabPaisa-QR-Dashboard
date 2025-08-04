@@ -7,15 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 // @access  Public
 const getAllTransactions = async (req, res, next) => {
   try {
-    const {
-      page = 1,
-      limit = 50,
-      qrId,
-      status,
-      startDate,
-      endDate,
-      search
-    } = req.query;
+    const { qrId, status, startDate, endDate, search } = req.query;
 
     // Build filter object
     const filter = {};
@@ -40,23 +32,19 @@ const getAllTransactions = async (req, res, next) => {
       ];
     }
 
-    // Execute query with pagination
-    const skip = (page - 1) * limit;
     const transactions = await Transaction.find(filter)
       .sort({ timestamp: -1 })
-      .limit(limit * 1)
-      .skip(skip)
       .populate('qrCode', 'referenceName vpa category');
 
-    const total = await Transaction.countDocuments(filter);
+    const total = transactions.length;
 
     res.status(200).json({
       success: true,
       data: {
         transactions,
         pagination: {
-          current: page,
-          total: Math.ceil(total / limit),
+          current: 1,
+          total: 1,
           count: transactions.length,
           totalRecords: total
         }
