@@ -128,8 +128,22 @@ class SimulationService {
         return null;
       }
 
-      // Generate random number of transactions (1-3)
-      const numTransactions = Math.floor(Math.random() * 3) + 1;
+      // Check if QR has reached maximum transaction limit (100)
+      const existingTransactionCount = await Transaction.countDocuments({ qrId });
+      if (existingTransactionCount >= 100) {
+        console.log(`🛑 QR ${qrId} has reached maximum transaction limit (100). Stopping simulation.`);
+        qrCode.simulationActive = false;
+        await qrCode.save();
+        this.stopSimulation(qrId);
+        return null;
+      }
+
+      // Calculate how many transactions we can still generate
+      const remainingTransactions = 100 - existingTransactionCount;
+      const maxTransactionsThisRound = Math.min(3, remainingTransactions);
+      
+      // Generate random number of transactions (1 to maxTransactionsThisRound)
+      const numTransactions = Math.floor(Math.random() * maxTransactionsThisRound) + 1;
       const transactions = [];
 
       for (let i = 0; i < numTransactions; i++) {

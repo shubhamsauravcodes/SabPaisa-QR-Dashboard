@@ -196,9 +196,14 @@ function Dashboard() {
           justifyContent: 'space-between',
           boxShadow: '0 4px 16px rgba(255, 183, 77, 0.2)'
         }}>
-          <span style={{ color: '#2e7d32', fontWeight: '600' }}>
-            Simulation Active: Generating payments every 5 seconds for {qrStats.withSimulation} active QR{qrStats.withSimulation === 1 ? '' : 's'}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ color: '#2e7d32', fontWeight: '600', fontSize: '16px' }}>
+              🟢 Simulation Active: Generating payments every 5 seconds for {qrStats.withSimulation} active QR{qrStats.withSimulation === 1 ? '' : 's'}
+            </span>
+            <span style={{ color: '#f57f17', fontWeight: '500', fontSize: '13px' }}>
+              ℹ️ Each QR code supports up to 100 simulated transactions. Simulations auto-stop when limit is reached.
+            </span>
+          </div>
           <button 
             onClick={() => navigate('/generated-qr')}
             style={{
@@ -210,7 +215,8 @@ function Dashboard() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              flexShrink: 0
             }}
             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
             onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
