@@ -413,6 +413,82 @@ const deleteTransaction = async (req, res, next) => {
   }
 };
 
+// @desc    Export transactions to CSV
+// @route   GET /api/transactions/export/csv
+// @access  Public
+const getTransactionsCSV = async (req, res, next) => {
+  try {
+    const { qrId, status, startDate, endDate } = req.query;
+
+    // Build filter object (same as getAllTransactions but without pagination)
+    const filter = {};
+    if (qrId) filter.qrId = qrId;
+    if (status) filter.status = status;
+    
+    // Date range filter
+    if (startDate || endDate) {
+      filter.timestamp = {};
+      if (startDate) filter.timestamp.$gte = new Date(startDate);
+      if (endDate) filter.timestamp.$lte = new Date(endDate);
+    }
+
+    // Get all transactions matching the filter (no pagination for export)
+    const transactions = await Transaction.find(filter)
+      .sort({ timestamp: -1 })
+      .populate('qrCode', 'referenceName vpa category');
+
+    // Generate CSV headers
+    const csvHeaders = [
+      'Payment ID',
+      'QR ID', 
+      'Amount (₹)',
+      'Status',
+      'UTR',
+      'Customer Name',
+      'Customer Phone',
+      'UPI App',
+      'Timestamp'
+    ];
+
+    // Generate CSV rows
+    const csvRows = transactions.map(txn => {
+      return [
+        txn.paymentId,
+        txn.qrId,
+        txn.amount,
+        txn.status,
+        txn.utr,
+        txn.customerInfo.name,
+        txn.customerInfo.phone,
+        txn.customerInfo.upiApp,
+        txn.timestamp.toISOString()
+      ];
+    });
+
+    // Combine headers and rows
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    // Generate filename
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = qrId 
+      ? `transactions_${qrId}_${timestamp}.csv`
+      : `all_transactions_${timestamp}.csv`;
+
+    // Set response headers for CSV download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Pragma', 'no-cache');
+
+    // Send CSV content
+    res.status(200).send(csvContent);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -420,5 +496,6 @@ module.exports = {
   updateTransaction,
   getTransactionStats,
   simulateTransaction,
-  deleteTransaction
+  deleteTransaction,
+  getTransactionsCSV
 };

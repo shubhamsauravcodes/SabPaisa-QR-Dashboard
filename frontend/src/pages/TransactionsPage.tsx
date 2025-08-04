@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../store/hooks';
 import { useSafeTransactions } from '../store/safeHooks';
 import { fetchTransactions, addTransactions } from '../store/slices/transactionsSlice';
+import { transactionApi } from '../services/api';
 import PaymentFeed from '../components/PaymentFeed';
 import { simulatePayment } from '../utils/paymentSimulator';
 import Header from '../components/Header';
@@ -87,6 +88,20 @@ const TransactionsPage = () => {
     fetchTransactionsData(page, pagination.pageSize);
   };
 
+  // Handle CSV Export
+  const handleExportCSV = async () => {
+    try {
+      const csvUrl = await transactionApi.exportCSV({
+        ...(qrId ? { qrId } : {}),
+        // Include additional parameters like status, startDate, endDate if needed
+      });
+      window.open(csvUrl, '_blank');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    }
+  };
+
   // Auto-refresh mechanism - refresh current page every 30 seconds
   useEffect(() => {
     const refreshInterval = setInterval(() => {
@@ -131,6 +146,7 @@ const TransactionsPage = () => {
           margin: '32px 0 16px 0',
           justifyContent: 'flex-start',
           flexWrap: 'wrap',
+          alignItems: 'center'
         }}>
           <div style={{
             background: '#f5f7fa',
@@ -171,6 +187,40 @@ const TransactionsPage = () => {
             Failure Amount<br />
             <span style={{ fontSize: '1.5rem', color: '#dc2626' }}>₹ {failureAmount.toLocaleString('en-IN')}</span>
           </div>
+          
+          {/* Export CSV Button */}
+          <button
+            onClick={handleExportCSV}
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              padding: '16px 24px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              minWidth: '180px',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+              textDecoration: 'none'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.3)';
+            }}
+          >
+            <span>📊</span>
+            Export CSV
+            {qrId && <span style={{ fontSize: '12px', opacity: 0.9 }}>({qrId})</span>}
+          </button>
         </div>
 
         {/* Transaction Content */}

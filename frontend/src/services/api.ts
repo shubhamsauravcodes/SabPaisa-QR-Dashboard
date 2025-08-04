@@ -232,6 +232,23 @@ export const transactionApi = {
     const response = await api.post('/transactions/simulate', { qrId, count });
     return response.data;
   },
+
+  // Export transactions to CSV
+  exportCSV: async (params?: {
+    qrId?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<string> => {
+    const queryParams = new URLSearchParams();
+    if (params?.qrId) queryParams.append('qrId', params.qrId);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    
+    const csvUrl = `${API_BASE_URL}/transactions/export/csv?${queryParams.toString()}`;
+    return csvUrl;
+  },
 };
 
 // Simulation API Functions

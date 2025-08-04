@@ -6,7 +6,8 @@ const {
   updateTransaction,
   getTransactionStats,
   simulateTransaction,
-  deleteTransaction
+  deleteTransaction,
+  getTransactionsCSV
 } = require('../controllers/transactionController');
 const { validateTransaction, validateTransactionUpdate, validateSimulation } = require('../middleware/validation');
 
@@ -22,6 +23,11 @@ router.get('/stats', getTransactionStats);
 // @desc    Simulate transaction(s) for testing
 // @access  Public
 router.post('/simulate', validateSimulation, simulateTransaction);
+
+// @route   GET /api/transactions/export/csv
+// @desc    Export transactions to CSV with filtering
+// @access  Public
+router.get('/export/csv', getTransactionsCSV);
 
 // @route   GET /api/transactions
 // @desc    Get all transactions with filtering and pagination
