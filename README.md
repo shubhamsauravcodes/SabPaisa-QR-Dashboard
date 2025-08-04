@@ -119,6 +119,7 @@ SabPaisa-QR-Dashboard/
 
 ### 📋 Prerequisites
 - **Node.js**: v18.0.0 or higher ([Download](https://nodejs.org/))
+- **React**: v19.0.0 or higher (installed via npm)
 - **MongoDB**: v4.4 or higher ([Download](https://www.mongodb.com/try/download/community))
 - **npm**: v8.0.0 or higher (comes with Node.js)
 - **Git**: For version control
