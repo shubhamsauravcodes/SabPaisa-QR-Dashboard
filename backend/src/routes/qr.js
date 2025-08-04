@@ -38,10 +38,10 @@ router.put('/:id', validateQRUpdate, updateQRCode);
 // @access  Public
 router.delete('/:id', deleteQRCode);
 
-// @route   PATCH /api/qr/:id/status
+// @route   POST /api/qr/:id/status
 // @desc    Toggle QR code status (Active/Inactive)
 // @access  Public
-router.patch('/:id/status', toggleQRStatus);
+router.post('/:id/status', toggleQRStatus);
 
 // @route   POST /api/qr/:id/simulation
 // @desc    Toggle QR code simulation

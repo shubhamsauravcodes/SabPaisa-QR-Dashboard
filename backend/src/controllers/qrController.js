@@ -252,7 +252,7 @@ const deleteQRCode = async (req, res, next) => {
 };
 
 // @desc    Toggle QR code status
-// @route   PATCH /api/qr/:id/status
+// @route   POST /api/qr/:id/status
 // @access  Public
 const toggleQRStatus = async (req, res, next) => {
   try {

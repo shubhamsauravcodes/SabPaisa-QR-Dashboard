@@ -28,6 +28,7 @@ const GeneratedQRPage: React.FC = () => {
   const [editInitialData, setEditInitialData] = useState<any>({});
   const [showCardIdx, setShowCardIdx] = useState<number | null>(null);
   const [toggleLoading, setToggleLoading] = useState<string | null>(null); // Track which QR is being toggled
+  const [statusToggleLoading, setStatusToggleLoading] = useState<string | null>(null); // Track which QR status is being toggled
   const [loading, setLoading] = useState(false);
 
   // Function to refresh QR data from backend
@@ -229,13 +230,36 @@ const GeneratedQRPage: React.FC = () => {
 
   const handleToggleStatus = async (idx: number) => {
     const qrId = qrCodes[idx].qrId;
+    const currentStatus = qrCodes[idx].status;
+    
+    setStatusToggleLoading(qrId); // Set loading state
+    
     try {
-      await qrApi.toggleStatus(qrId);
+      console.log(`🔄 Toggling QR status from ${currentStatus} for QR ID: ${qrId}`);
+      const response = await qrApi.toggleStatus(qrId);
+      console.log('🎉 QR status toggle response:', response);
+      
       // Refresh the data to show updated status
       await refreshData();
-      console.log('QR code status toggled successfully');
-    } catch (error) {
-      console.error('Failed to toggle QR status:', error);
+      
+      const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+      console.log(`✅ QR code status toggled successfully: ${currentStatus} → ${newStatus}`);
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string }; status?: number }; request?: XMLHttpRequest; message?: string };
+      console.error('❌ Failed to toggle QR status:', error);
+      
+      let errorMessage = 'Unknown error occurred';
+      if (error.response) {
+        errorMessage = error.response.data?.message || `Server Error: ${error.response.status}`;
+      } else if (error.request) {
+        errorMessage = 'Network Error: No response received from the server';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred';
+      }
+      
+      alert(`Failed to toggle QR status: ${errorMessage}`);
+    } finally {
+      setStatusToggleLoading(null); // Clear loading state
     }
   };
 
@@ -565,7 +589,17 @@ const GeneratedQRPage: React.FC = () => {
                           }}
                         >
                           {qr.status === 'Inactive' ? (
-                            'Inactive'
+                            <span style={{
+                              color: '#ef4444',
+                              fontWeight: 600,
+                              fontSize: '14px',
+                              background: '#fef2f2',
+                              padding: '8px 12px',
+                              borderRadius: '6px',
+                              border: '1px solid #fecaca'
+                            }}>
+                              Inactive QR
+                            </span>
                           ) : (
                             <div
                               style={{
@@ -642,9 +676,11 @@ const GeneratedQRPage: React.FC = () => {
                         >
                           <button
                             onClick={() => handleToggleStatus(origIdx)}
+                            disabled={statusToggleLoading === qr.qrId}
                             style={{
-                              background:
-                                qr.status === 'Active'
+                              background: statusToggleLoading === qr.qrId
+                                ? 'linear-gradient(90deg,#9ca3af,#6b7280)'
+                                : qr.status === 'Active'
                                   ? 'linear-gradient(90deg,#4caf50,#43e97b)'
                                   : 'linear-gradient(90deg,#f44336,#f093fb)',
                               color: 'white',
@@ -652,11 +688,12 @@ const GeneratedQRPage: React.FC = () => {
                               borderRadius: '6px',
                               padding: '6px 16px',
                               fontWeight: 600,
-                              cursor: 'pointer',
+                              cursor: statusToggleLoading === qr.qrId ? 'not-allowed' : 'pointer',
+                              opacity: statusToggleLoading === qr.qrId ? 0.7 : 1,
                               boxShadow: '0 1px 4px rgba(76,175,80,0.08)',
                             }}
                           >
-                            {qr.status}
+                            {statusToggleLoading === qr.qrId ? 'Loading...' : qr.status}
                           </button>
                         </td>
                         <td

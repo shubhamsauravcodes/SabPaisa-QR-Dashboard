@@ -125,7 +125,7 @@ export const qrApi = {
 
   // Toggle QR code status
   toggleStatus: async (qrId: string): Promise<ApiResponse<QRCode>> => {
-    const response = await api.patch(`/qr/${qrId}/status`);
+    const response = await api.post(`/qr/${qrId}/status`);
     return response.data;
   },
 
