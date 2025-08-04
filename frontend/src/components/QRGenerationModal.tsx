@@ -109,15 +109,18 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
       return;
     }
 
-    // Check for same referenceName and category with same QR Identifier
-    if (qrCodes.some((qr: QRCode) => qr.referenceName.trim().toLowerCase() === referenceName.trim().toLowerCase() && qr.category === category && qr.qrId === qrId)) {
-      setError("Same QR Identifier cannot be used for same Reference Name and Category.");
-      return;
-    }
-
-    // Check for same referenceName and category with different QR Identifier
-    if (qrCodes.some((qr: QRCode) => qr.referenceName.trim().toLowerCase() === referenceName.trim().toLowerCase() && qr.category === category && qr.qrId !== qrId)) {
-      // This is allowed, but ensure QR Identifier is unique (already checked above)
+    // Only check for duplicate combination when creating new QR (not during edit)
+    if (!isEdit) {
+      // Check if same Reference Name and Category combination already exists
+      const duplicateCombo = qrCodes.find((qr: QRCode) => 
+        qr.referenceName.trim().toLowerCase() === referenceName.trim().toLowerCase() && 
+        qr.category === category
+      );
+      
+      if (duplicateCombo) {
+        setError(`Same combination of Reference Name "${referenceName}" and Category "${category}" already exists with QR ID: ${duplicateCombo.qrId}. Please use a different Reference Name or Category.`);
+        return;
+      }
     }
 
     const vpa = `sabpaisa.${qrId}@okhdfcbank`;
@@ -230,18 +233,24 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
                     type="text"
                     value={qrId}
                     onChange={(e) => {
-                      // Only allow uppercase letters and numbers, max 5 characters
-                      const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
-                      setQrId(value);
-                      // Clear error when user starts typing
-                      if (error && error.includes("QR Identifier")) {
-                        setError("");
+                      if (!isEdit) {
+                        // Only allow uppercase letters and numbers, max 5 characters
+                        const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+                        setQrId(value);
+                        // Clear error when user starts typing
+                        if (error && error.includes("QR Identifier")) {
+                          setError("");
+                        }
                       }
                     }}
+                    disabled={isEdit}
                     style={{
                       flex: 1,
                       padding: '12px 16px',
                       border: (() => {
+                        if (isEdit) {
+                          return '2px solid #e9ecef';
+                        }
                         if (qrId.length === 5 && /^[A-Z0-9]{5}$/.test(qrId)) {
                           const hasLetter = /[A-Z]/.test(qrId);
                           const hasNumber = /[0-9]/.test(qrId);
@@ -256,35 +265,42 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
                       fontSize: '16px',
                       fontFamily: 'monospace',
                       fontWeight: '500',
-                      color: '#495057',
-                      background: '#f8f9fa',
+                      color: isEdit ? '#6c757d' : '#495057',
+                      background: isEdit ? '#e9ecef' : '#f8f9fa',
+                      cursor: isEdit ? 'not-allowed' : 'text',
                       transition: 'all 0.3s ease'
                     }}
                     maxLength={5}
-                    placeholder="5-char ID (A-Z, 0-9)"
+                    placeholder={isEdit ? "QR ID cannot be changed" : "5-char ID (A-Z, 0-9)"}
                   />
-                  <button
-                    type="button"
-                    onClick={handleGenerateId}
-                    style={{
-                      padding: '12px 16px',
-                      background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    Generate
-                  </button>
+                  
+                  {!isEdit && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateId}
+                      style={{
+                        padding: '12px 16px',
+                        background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      Generate
+                    </button>
+                  )}
                 </div>
-                {/* Real-time validation feedback */}
                 {qrId.length > 0 && (
                   <div style={{
                     fontSize: '12px',
