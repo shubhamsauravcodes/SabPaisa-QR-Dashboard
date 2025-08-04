@@ -89,32 +89,46 @@ const GeneratedQRPage: React.FC = () => {
     }
   };
 
-  // Function to refresh transaction data from backend
-  const refreshTransactions = async () => {
+  // State to store transaction counts per QR code
+  const [qrTransactionCounts, setQrTransactionCounts] = useState<Record<string, number>>({});
+
+  // Function to fetch transaction counts for all QR codes
+  const refreshTransactionCounts = async () => {
     try {
-      console.log('🔍 Fetching transactions from API...');
-      const response = await transactionApi.getAll({ limit: 1000 });
-      console.log('📡 Transactions API Response:', response);
+      console.log('🔍 Fetching transaction counts from API...');
+      const counts: Record<string, number> = {};
       
-      const transactionsData = response.data.transactions || response.data || [];
-      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+      // Fetch transaction count for each QR code using the stats API
+      for (const qr of qrCodes) {
+        try {
+          const response = await transactionApi.getAll({ qrId: qr.qrId, limit: 1 }); // Just get pagination metadata
+          const totalRecords = response.data?.pagination?.totalRecords || 0;
+          counts[qr.qrId] = totalRecords;
+          console.log(`📊 QR ${qr.qrId}: ${totalRecords} transactions`);
+        } catch (error) {
+          console.error(`❌ Failed to get count for QR ${qr.qrId}:`, error);
+          counts[qr.qrId] = 0;
+        }
+      }
       
-      dispatch({
-        type: 'transactions/replaceTransactions',
-        payload: transactionsArray
-      });
-      
-      console.log('✅ Transactions data refreshed successfully, count:', transactionsArray.length);
+      setQrTransactionCounts(counts);
+      console.log('✅ Transaction counts refreshed successfully:', counts);
     } catch (error) {
-      console.error('❌ Failed to refresh transactions data:', error);
+      console.error('❌ Failed to refresh transaction counts:', error);
     }
   };
 
-  // Load QR data and transactions on component mount
+  // Load QR data and transaction counts on component mount
   useEffect(() => {
     refreshData();
-    refreshTransactions();
   }, []);
+
+  // Load transaction counts when QR codes change
+  useEffect(() => {
+    if (qrCodes.length > 0) {
+      refreshTransactionCounts();
+    }
+  }, [qrCodes]);
 
   // Frontend simulation disabled - transactions should come from backend simulation service
   // React.useEffect(() => {
@@ -525,7 +539,7 @@ const GeneratedQRPage: React.FC = () => {
                 ) : (
                   filteredQRCodes.map((qr, idx) => {
                     const origIdx = qrCodes.findIndex(q => q.qrId === qr.qrId);
-                    const qrTransactions = transactions.filter(txn => txn.qrId === qr.qrId);
+                    const transactionCount = qrTransactionCounts[qr.qrId] || 0;
                     return (
                       <tr
                         key={qr.qrId}
@@ -698,7 +712,7 @@ const GeneratedQRPage: React.FC = () => {
                             }}
                             onClick={() => handleViewQrTransactions(qr.qrId)}
                           >
-                            View ({qrTransactions.length})
+                            View ({transactionCount})
                           </button>
                           <button
                             style={{
