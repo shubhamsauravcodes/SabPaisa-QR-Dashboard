@@ -155,8 +155,9 @@ transactionSchema.methods.markAsFailed = function() {
 // Pre-save middleware to generate UTR if not provided
 transactionSchema.pre('save', function(next) {
   if (!this.utr) {
-    // Generate a random 12-character UTR
-    this.utr = Math.random().toString(36).substring(2, 14).toUpperCase();
+    // Generate exactly 12 alphanumeric characters for UTR
+    this.utr = (Math.random().toString(36).substring(2, 8) +
+               Math.random().toString(36).substring(2, 8)).substring(0, 12).toUpperCase();
   }
   next();
 });

@@ -144,7 +144,9 @@ class SimulationService {
         else status = 'Pending';
 
         const paymentId = `PAY${Date.now()}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        const utr = Math.random().toString(36).substring(2, 14).toUpperCase();
+        // Generate exactly 12 alphanumeric characters for UTR
+        const utr = (Math.random().toString(36).substring(2, 8) +
+                   Math.random().toString(36).substring(2, 8)).substring(0, 12).toUpperCase();
 
         const transaction = new Transaction({
           paymentId,

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../store/hooks';
 import { useSafeQRCodes, useSafeTransactions, useFilteredQRCodes } from '../store/safeHooks';
 import { replaceQRCodes, toggleQRStatus, toggleSimulation } from '../store/slices/qrCodesSlice';
-import { qrApi, simulationApi } from '../services/api';
+import { qrApi, simulationApi, transactionApi } from '../services/api';
 import QRCode from 'react-qr-code';
 import QRGenerationModal from '../components/QRGenerationModal';
 import Modal from '../components/Modal';
@@ -89,26 +89,48 @@ const GeneratedQRPage: React.FC = () => {
     }
   };
 
-  // Load QR data on component mount
+  // Function to refresh transaction data from backend
+  const refreshTransactions = async () => {
+    try {
+      console.log('🔍 Fetching transactions from API...');
+      const response = await transactionApi.getAll({ limit: 1000 });
+      console.log('📡 Transactions API Response:', response);
+      
+      const transactionsData = response.data.transactions || response.data || [];
+      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+      
+      dispatch({
+        type: 'transactions/replaceTransactions',
+        payload: transactionsArray
+      });
+      
+      console.log('✅ Transactions data refreshed successfully, count:', transactionsArray.length);
+    } catch (error) {
+      console.error('❌ Failed to refresh transactions data:', error);
+    }
+  };
+
+  // Load QR data and transactions on component mount
   useEffect(() => {
     refreshData();
+    refreshTransactions();
   }, []);
 
-  // Simulate UPI transactions every second for QR codes with simulationActive=true
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      qrCodes.forEach(qr => {
-        if (qr.simulationActive && qr.status === 'Active') {
-          const txn = simulatePayment(qr.qrId, qr.maxAmount);
-          dispatch({
-            type: 'transactions/addTransaction',
-            payload: txn
-          });
-        }
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [qrCodes, dispatch]);
+  // Frontend simulation disabled - transactions should come from backend simulation service
+  // React.useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     qrCodes.forEach(qr => {
+  //       if (qr.simulationActive && qr.status === 'Active') {
+  //         const txn = simulatePayment(qr.qrId, qr.maxAmount);
+  //         dispatch({
+  //           type: 'transactions/addTransaction',
+  //           payload: txn
+  //         });
+  //       }
+  //     });
+  //   }, 5000);
+  //   return () => clearInterval(interval);
+  // }, [qrCodes, dispatch]);
 
   const categories = [
     'Retail', 'Rental', 'Education', 'Custom'
