@@ -103,16 +103,14 @@ export const useQRCodesStats = () => {
  * Safe hook to get transactions statistics
  */
 export const useTransactionsStats = () => {
-  const transactions = useSafeTransactions();
-  
-  return {
-    total: transactions.length,
-    successful: transactions.filter(txn => txn.status === 'Success').length,
-    failed: transactions.filter(txn => txn.status === 'Failed').length,
-    pending: transactions.filter(txn => txn.status === 'Pending').length,
-    totalAmount: transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0),
-    successfulAmount: transactions
-      .filter(txn => txn.status === 'Success')
-      .reduce((sum, txn) => sum + (txn.amount || 0), 0),
-  };
+  return useAppSelector((state) => state.transactions.stats || {
+    totalTransactions: 0,
+    totalAmount: 0,
+    successfulTransactions: 0,
+    failedTransactions: 0,
+    pendingTransactions: 0,
+    successfulAmount: 0,
+    averageAmount: 0,
+    successRate: '0.00',
+  });
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from '../store/hooks';
-import { useSafeQRCodes, useSafeTransactions, useQRCodesStats, useTransactionsStats, useFilteredQRCodes } from '../store/safeHooks';
+import { useSafeQRCodes, useQRCodesStats, useTransactionsStats, useFilteredQRCodes } from '../store/safeHooks';
 import { 
   fetchQRCodes,
   createNewQRCode,
@@ -12,7 +12,7 @@ import {
   toggleQRStatus,
   toggleSimulation
 } from '../store/slices/qrCodesSlice';
-import { fetchTransactions } from '../store/slices/transactionsSlice';
+import { fetchTransactionStats } from '../store/slices/transactionsSlice';
 import QRGenerationModal from "./QRGenerationModal";
 import QRCodeCard from "./QRCodeCard";
 import Modal from "./Modal";
@@ -24,7 +24,6 @@ function Dashboard() {
   const dispatch = useAppDispatch();
   
   const qrCodes = useSafeQRCodes();
-  const transactions = useSafeTransactions();
   const qrStats = useQRCodesStats();
   const transactionStats = useTransactionsStats();
 
@@ -42,7 +41,7 @@ function Dashboard() {
   // Load data on component mount
   useEffect(() => {
     dispatch(fetchQRCodes());
-    dispatch(fetchTransactions());
+    dispatch(fetchTransactionStats()); // Fetch only stats for dashboard performance
   }, [dispatch]);
 
   const handleCreateQR = async (data) => {
@@ -143,7 +142,7 @@ function Dashboard() {
         onClick={() => navigate('/transactions')}
         >
           <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>Total Transactions</div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{transactionStats.total}</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>{transactionStats.totalTransactions}</div>
           <div style={{ fontSize: '12px', opacity: 0.8 }}>Click to view all transactions</div>
         </div>
 
@@ -346,32 +345,27 @@ function Dashboard() {
           </div>
           
           <div>
-            <h3 style={{ margin: '0 0 16px 0', color: '#666', fontSize: '18px', fontWeight: '600' }}>Recent Transactions</h3>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-               {transactions.length > 0 ? (
-                 <div style={{
-                   padding: '12px',
-                   border: '1px solid #e0e0e0',
-                   borderRadius: '8px',
-                   background: '#fafafa'
-                 }}>
-                   <div style={{ fontWeight: '600', color: '#333' }}>₹{transactions[0].amount}</div>
-                   <div style={{ fontSize: '12px', color: '#666' }}>{transactions[0].qrId} • {transactions[0].status}</div>
-                 </div>
-               ) : (
-                 <div style={{
-                   padding: '12px',
-                   border: '1px solid #e0e0e0',
-                   borderRadius: '8px',
-                   background: '#fafafa',
-                   textAlign: 'center',
-                   color: '#666',
-                   fontSize: '14px'
-                 }}>
-                   No transactions yet
-                 </div>
-               )}
-             </div>
+            <h3 style={{ margin: '0 0 16px 0', color: '#666', fontSize: '18px', fontWeight: '600' }}>Transaction Summary</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{
+                padding: '12px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                background: '#fafafa'
+              }}>
+                <div style={{ fontWeight: '600', color: '#333' }}>Total: {transactionStats.totalTransactions}</div>
+                <div style={{ fontSize: '12px', color: '#666' }}>Success: {transactionStats.successfulTransactions} • Failed: {transactionStats.failedTransactions}</div>
+              </div>
+              <div style={{
+                padding: '12px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                background: '#fafafa'
+              }}>
+                <div style={{ fontWeight: '600', color: '#333' }}>₹{transactionStats.totalAmount?.toLocaleString('en-IN') || '0'}</div>
+                <div style={{ fontSize: '12px', color: '#666' }}>Total Amount • Success Rate: {transactionStats.successRate}%</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

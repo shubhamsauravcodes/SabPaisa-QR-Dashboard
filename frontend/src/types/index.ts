@@ -27,3 +27,8 @@ export interface Transaction {
     upiApp: string;
   };
 }
+
+export interface RootState {
+  qrCodes: QRCode[];
+  transactions: Transaction[];
+}

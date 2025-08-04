@@ -7,26 +7,29 @@ import TransactionsPage from './pages/TransactionsPage';
 import GeneratedQRPage from './pages/GeneratedQRPage';
 import { useAppDispatch } from './store/hooks';
 import { fetchQRCodes } from './store/slices/qrCodesSlice';
-import { fetchTransactions } from './store/slices/transactionsSlice';
+import { fetchTransactionStats } from './store/slices/transactionsSlice';
 
 // Dashboard component with Redux integration and auto-refresh
 function DashboardWithRedux() {
   const dispatch = useAppDispatch();
 
-  // Auto-refresh data every 1 minute
+  // Auto-refresh data every 1 minute - ONLY for dashboard
   useEffect(() => {
+    console.log('🏠 Dashboard mounted - Loading dashboard data...');
     // Initial data load
     dispatch(fetchQRCodes());
-    dispatch(fetchTransactions());
+    dispatch(fetchTransactionStats()); // Only fetch stats for dashboard performance
 
     // Set up auto-refresh interval (1 minute = 60000ms)
     const refreshInterval = setInterval(() => {
-      console.log('🔄 Auto-refreshing data from backend...');
+      console.log('🔄 Auto-refreshing dashboard data from backend...');
       dispatch(fetchQRCodes());
-      dispatch(fetchTransactions());
+      dispatch(fetchTransactionStats()); // Only refresh stats for dashboard
     }, 60000); // 1 minute
 
+    // Cleanup: Stop auto-refresh when leaving dashboard
     return () => {
+      console.log('🏠 Dashboard unmounted - Stopping auto-refresh...');
       clearInterval(refreshInterval);
     };
   }, [dispatch]);
@@ -36,6 +39,7 @@ function DashboardWithRedux() {
 
 // Transactions page with Redux integration
 function TransactionsPageWithRedux() {
+  console.log('📊 Transactions page mounted');
   return <TransactionsPage />;
 }
 

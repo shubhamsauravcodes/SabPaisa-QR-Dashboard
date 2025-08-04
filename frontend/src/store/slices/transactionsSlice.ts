@@ -3,15 +3,30 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import type { Transaction } from '../../types/index';
 import { transactionApi } from '../../services/api';
 
+interface TransactionStats {
+  totalTransactions: number;
+  totalAmount: number;
+  successfulTransactions: number;
+  failedTransactions: number;
+  pendingTransactions: number;
+  successfulAmount: number;
+  averageAmount: number;
+  successRate: string;
+}
+
 interface TransactionsState {
   transactions: Transaction[];
+  stats: TransactionStats | null;
   loading: boolean;
+  statsLoading: boolean;
   error: string | null;
 }
 
 const initialState: TransactionsState = {
   transactions: [],
+  stats: null,
   loading: false,
+  statsLoading: false,
   error: null,
 };
 
@@ -22,6 +37,15 @@ export const fetchTransactions = createAsyncThunk('transactions/fetchTransaction
     // Ensure we always return an array
     const transactions = response.data?.transactions || response.data || [];
     return Array.isArray(transactions) ? transactions : [];
+  } catch (error) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const fetchTransactionStats = createAsyncThunk('transactions/fetchStats', async (params?: { startDate?: string; endDate?: string; qrId?: string }, { rejectWithValue }) => {
+  try {
+    const response = await transactionApi.getStats(params);
+    return response.data.summary;
   } catch (error) {
     return rejectWithValue(error.message);
   }
@@ -129,6 +153,20 @@ const transactionsSlice = createSlice({
       state.loading = false;
       state.error = action.payload as string;
     });
+
+    // Fetch transaction stats
+    builder.addCase(fetchTransactionStats.pending, (state) => {
+      state.statsLoading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchTransactionStats.fulfilled, (state, action) => {
+      state.statsLoading = false;
+      state.stats = action.payload;
+    });
+    builder.addCase(fetchTransactionStats.rejected, (state, action) => {
+      state.statsLoading = false;
+      state.error = action.payload as string;
+    });
   },
 });
 
@@ -145,4 +183,4 @@ export const {
   bulkAddTransactions,
 } = transactionsSlice.actions;
 
-export default transactionsSlice.reducer; 
+export default transactionsSlice.reducer;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../store/hooks';
 import { useSafeTransactions } from '../store/safeHooks';
-import { addTransactions } from '../store/slices/transactionsSlice';
+import { fetchTransactions, addTransactions } from '../store/slices/transactionsSlice';
 import PaymentFeed from '../components/PaymentFeed';
 import { simulatePayment } from '../utils/paymentSimulator';
 import Header from '../components/Header';
@@ -24,6 +24,13 @@ const TransactionsPage = () => {
   const pageTitle = qrId 
     ? `Transactions for QR: ${qrId}`
     : 'All Transactions';
+
+  // Load transaction data on component mount and when qrId changes
+  useEffect(() => {
+    const params = qrId ? { qrId } : {};
+    console.log('📊 TransactionsPage: Fetching transactions with params:', params);
+    dispatch(fetchTransactions(params));
+  }, [dispatch, qrId]);
 
   // Auto-refresh mechanism - generate new transactions every 30 seconds
   useEffect(() => {
