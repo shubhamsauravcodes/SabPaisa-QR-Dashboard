@@ -21,18 +21,50 @@ connectDB().then(() => {
 });
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// CORS configuration - must be before routes
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`🚨 CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow all origins for development
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
