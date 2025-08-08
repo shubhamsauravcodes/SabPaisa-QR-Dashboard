@@ -23,7 +23,8 @@ export const fetchQRCodes = createAsyncThunk('qrCodes/fetchQRCodes', async (_, {
     const qrCodes = response.data?.qrCodes || response.data || [];
     return Array.isArray(qrCodes) ? qrCodes : [];
   } catch (error) {
-    return rejectWithValue(error.message);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return rejectWithValue(errorMessage);
   }
 });
 
@@ -32,7 +33,8 @@ export const createNewQRCode = createAsyncThunk('qrCodes/createQRCode', async (q
     const response = await qrApi.create(qrData);
     return response.data;
   } catch (error) {
-    return rejectWithValue(error.message);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return rejectWithValue(errorMessage);
   }
 });
 
@@ -41,7 +43,8 @@ export const updateQRCodeDetails = createAsyncThunk('qrCodes/updateQRCode', asyn
     const response = await qrApi.update(qrId, qrData);
     return { qrId, qrData: response.data };
   } catch (error) {
-    return rejectWithValue(error.message);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return rejectWithValue(errorMessage);
   }
 });
 
@@ -50,7 +53,8 @@ export const deleteQRCodeById = createAsyncThunk('qrCodes/deleteQRCode', async (
     await qrApi.delete(qrId);
     return qrId;
   } catch (error) {
-    return rejectWithValue(error.message);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return rejectWithValue(errorMessage);
   }
 });
 

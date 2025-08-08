@@ -5,6 +5,18 @@ import Modal from "./Modal";
 
 const categories = ["Retail", "Rental", "Education", "Custom"];
 
+// Type for QR form data
+type QRFormData = {
+  qrId: string;
+  vpa: string;
+  referenceName: string;
+  description?: string;
+  maxAmount?: number;
+  category: 'Retail' | 'Rental' | 'Education' | 'Custom';
+  notes?: string;
+  updatedAt?: string;
+};
+
 function generateQRId() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let id = "";
@@ -20,7 +32,7 @@ function generateQRId() {
 interface QRGenerationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<QRCode, 'createdAt' | 'simulationActive' | 'status'>) => void;
+  onSubmit: (data: QRFormData) => void | Promise<void>;
   initialData?: Partial<QRCode>;
   isEdit?: boolean;
 }
@@ -124,7 +136,7 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
     }
 
     const vpa = `sabpaisa.${qrId}@okhdfcbank`;
-    onSubmit({
+    const result = onSubmit({
       qrId,
       vpa,
       referenceName: referenceName.trim(),
@@ -133,7 +145,16 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
       category,
       notes: notes.trim(),
     });
-    onClose();
+    
+    // Handle both sync and async onSubmit functions
+    if (result && typeof result.then === 'function') {
+      result.then(() => onClose()).catch((error) => {
+        console.error('Error in onSubmit:', error);
+        setError(error.message || 'An error occurred');
+      });
+    } else {
+      onClose();
+    }
   };
 
   const vpa = `sabpaisa.${qrId}@okhdfcbank`;
@@ -487,7 +508,7 @@ const QRGenerationModal: React.FC<QRGenerationModalProps> = ({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => setCategory(e.target.value as 'Retail' | 'Rental' | 'Education' | 'Custom')}
                 style={{
                   width: '107%',
                   padding: '12px 16px',

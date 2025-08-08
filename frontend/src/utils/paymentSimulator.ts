@@ -1,4 +1,4 @@
-import type { Transaction } from '../types';
+import type { Transaction } from '../types/index';
 
 const upiApps = ['GPay', 'PhonePe', 'Paytm', 'BHIM', 'Amazon Pay'];
 const customerNames = ['Rahul Kumar', 'Priya Sharma', 'Amit Patel', 'Neha Singh', 'Rajesh Verma', 'Sita Devi', 'Mohan Das', 'Kavita Roy'];

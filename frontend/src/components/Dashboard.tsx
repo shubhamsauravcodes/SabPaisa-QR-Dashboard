@@ -1,23 +1,29 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from '../store/hooks';
-import { useSafeQRCodes, useQRCodesStats, useTransactionsStats, useFilteredQRCodes } from '../store/safeHooks';
+import { useSafeQRCodes, useQRCodesStats, useTransactionsStats } from '../store/safeHooks';
+import type { QRCode } from '../types/index';
 import { 
   fetchQRCodes,
   createNewQRCode,
-  updateQRCodeDetails,
-  deleteQRCodeById,
-  updateQRCode,
-  deleteQRCode,
-  toggleQRStatus,
-  toggleSimulation
+  updateQRCode
 } from '../store/slices/qrCodesSlice';
 import { fetchTransactionStats } from '../store/slices/transactionsSlice';
 import QRGenerationModal from "./QRGenerationModal";
 import QRCodeCard from "./QRCodeCard";
 import Modal from "./Modal";
-import QRCode from "react-qr-code";
 import Header from "./Header";
+
+interface TransactionStats {
+  totalTransactions: number;
+  totalAmount: number;
+  successfulTransactions: number;
+  failedTransactions: number;
+  pendingTransactions: number;
+  successfulAmount: number;
+  averageAmount: number;
+  successRate: string;
+}
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -25,26 +31,20 @@ function Dashboard() {
   
   const qrCodes = useSafeQRCodes();
   const qrStats = useQRCodesStats();
-  const transactionStats = useTransactionsStats();
+  const transactionStats = useTransactionsStats() as TransactionStats;
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [showCardIdx, setShowCardIdx] = useState(null);
-  const [editIdx, setEditIdx] = useState(null);
-  const [editInitialData, setEditInitialData] = useState(null);
-  
-  // Phase 3: QR Code Management Table Filters
-  const [filterId, setFilterId] = useState("");
-  const [filterName, setFilterName] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [showCardIdx, setShowCardIdx] = useState<number | null>(null);
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [editInitialData, setEditInitialData] = useState<Partial<QRCode> | null>(null);
 
   // Load data on component mount
   useEffect(() => {
     dispatch(fetchQRCodes());
-    dispatch(fetchTransactionStats()); // Fetch only stats for dashboard performance
+    dispatch(fetchTransactionStats({})); // Fetch only stats for dashboard performance
   }, [dispatch]);
 
-  const handleCreateQR = async (data) => {
+  const handleCreateQR = async (data: Omit<QRCode, 'createdAt' | 'simulationActive' | 'status'>) => {
     try {
       await dispatch(createNewQRCode(data)).unwrap();
       setModalOpen(false);
@@ -54,55 +54,13 @@ function Dashboard() {
     }
   };
 
-  const handleEditQR = (data) => {
+  const handleEditQR = (data: Omit<QRCode, 'createdAt' | 'simulationActive' | 'status'>) => {
     if (editIdx !== null) {
       dispatch(updateQRCode({ index: editIdx, qrCode: data }));
       setEditIdx(null);
       setEditInitialData(null);
     }
   };
-
-  const handleDeleteQR = (idx) => {
-    dispatch(deleteQRCode(idx));
-  };
-
-  const handleToggleStatus = (idx) => {
-    dispatch(toggleQRStatus(idx));
-    
-    // If QR is being set to Inactive, also stop its simulation
-    if (Array.isArray(qrCodes) && qrCodes[idx] && qrCodes[idx].status === "Active") {
-      // QR is being set to Inactive, stop simulation
-      if (qrCodes[idx].simulationActive) {
-        dispatch(toggleSimulation(idx));
-      }
-    }
-  };
-
-  const handleShowQR = (idx) => {
-    setShowCardIdx(idx);
-  };
-
-  const handleViewQrTransactions = (qrId) => {
-    navigate(`/transactions?qrId=${qrId}`);
-  };
-
-  const handleViewAllTransactions = () => {
-    navigate('/transactions');
-  };
-
-  const toggleQrSimulation = (idx) => {
-    dispatch(toggleSimulation(idx));
-  };
-
-  // Phase 3: Filtered QR Codes using safe hook
-  const filteredQRCodes = useFilteredQRCodes({
-    id: filterId,
-    name: filterName,
-    category: filterCategory,
-    status: filterStatus
-  });
-
-  const categories = ["Retail", "Rental", "Education", "Custom"];
 
   return (
     <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh', width: '100%' }}>
@@ -323,7 +281,7 @@ function Dashboard() {
             <h3 style={{ margin: '0 0 16px 0', color: '#666', fontSize: '18px', fontWeight: '600' }}>Latest QR Codes</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {qrCodes.length > 0 ? (
-                qrCodes.slice(0, 3).map((qr, idx) => (
+                qrCodes.slice(0, 3).map((qr) => (
                   <div key={qr.qrId} style={{
                     padding: '12px',
                     border: '1px solid #e0e0e0',
@@ -388,7 +346,7 @@ function Dashboard() {
         isOpen={editIdx !== null}
         onClose={() => { setEditIdx(null); setEditInitialData(null); }}
         onSubmit={handleEditQR}
-        initialData={editInitialData}
+        initialData={editInitialData || undefined}
         isEdit={true}
       />
 
@@ -399,7 +357,7 @@ function Dashboard() {
             qrId: qrCodes[showCardIdx].qrId,
             vpa: qrCodes[showCardIdx].vpa,
             referenceName: qrCodes[showCardIdx].referenceName,
-            maxAmount: qrCodes[showCardIdx].maxAmount || '',
+            maxAmount: qrCodes[showCardIdx].maxAmount?.toString() || '',
             category: qrCodes[showCardIdx].category,
             status: qrCodes[showCardIdx].status,
           }} />

@@ -53,24 +53,25 @@ export const formatTableDate = (dateString: string): string => {
 /**
  * Recursively converts Date objects in an object to ISO strings
  */
-export const serializeDatesInObject = <T extends Record<string, any>>(obj: T): T => {
-  const serialized = { ...obj };
+export const serializeDatesInObject = (obj: Record<string, unknown>): Record<string, unknown> => {
+  const serialized: Record<string, unknown> = { ...obj };
   
   for (const key in serialized) {
-    if (serialized[key] instanceof Date) {
-      (serialized[key] as any) = serializeDate(serialized[key] as Date);
-    } else if (Array.isArray(serialized[key])) {
+    const value = serialized[key];
+    if (value instanceof Date) {
+      serialized[key] = serializeDate(value);
+    } else if (Array.isArray(value)) {
       // Handle arrays by processing each element
-      serialized[key] = serialized[key].map((item: any) => {
+      serialized[key] = value.map((item: unknown) => {
         if (item instanceof Date) {
           return serializeDate(item);
         } else if (typeof item === 'object' && item !== null) {
-          return serializeDatesInObject(item);
+          return serializeDatesInObject(item as Record<string, unknown>);
         }
         return item;
       });
-    } else if (typeof serialized[key] === 'object' && serialized[key] !== null) {
-      serialized[key] = serializeDatesInObject(serialized[key]);
+    } else if (typeof value === 'object' && value !== null) {
+      serialized[key] = serializeDatesInObject(value as Record<string, unknown>);
     }
   }
   

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { QRCode, Transaction } from '../types';
+import type { QRCode, Transaction } from '../types/index';
 import { serializeDatesInObject } from '../utils/dateUtils';
 
 // API Configuration
@@ -67,7 +67,8 @@ export interface ApiResponse<T> {
 export interface PaginatedResponse<T> {
   success: boolean;
   data: {
-    [key: string]: T[];
+    qrCodes?: T[];
+    transactions?: T[];
     pagination: {
       current: number;
       total: number;
@@ -306,7 +307,7 @@ export const generalApi = {
   },
 
   // Get API info
-  getApiInfo: async (): Promise<any> => {
+  getApiInfo: async (): Promise<{ name: string; version: string; description: string; [key: string]: unknown }> => {
     const response = await api.get('/');
     return response.data;
   },

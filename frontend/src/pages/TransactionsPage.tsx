@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '../store/hooks';
 import { useSafeTransactions } from '../store/safeHooks';
-import { fetchTransactions, addTransactions } from '../store/slices/transactionsSlice';
+import { fetchTransactions } from '../store/slices/transactionsSlice';
 import { transactionApi } from '../services/api';
 import PaymentFeed from '../components/PaymentFeed';
-import { simulatePayment } from '../utils/paymentSimulator';
 import Header from '../components/Header';
 import Paginator from '../components/Paginator';
 
 const TransactionsPage = () => {
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const qrId = searchParams.get('qrId');
@@ -39,7 +37,7 @@ const TransactionsPage = () => {
     : 'All Transactions';
 
   // Function to fetch transactions with pagination
-  const fetchTransactionsData = async (page = 1, limit = 20) => {
+  const fetchTransactionsData = useCallback(async (page = 1, limit = 20) => {
     setLoading(true);
     const params = {
       ...(qrId ? { qrId } : {}),
@@ -57,31 +55,33 @@ const TransactionsPage = () => {
       console.log('📊 Pagination Data:', paginationData);
       
       if (paginationData) {
-        const totalPages = Math.ceil(paginationData.totalRecords / paginationData.pageSize);
+        const pageSize = 20; // Default page size
+        const totalPages = Math.ceil(paginationData.totalRecords / pageSize);
+        const currentPage = paginationData.current || 1;
         const updatedPagination = {
-          current: paginationData.current || 1,
+          current: currentPage,
           total: totalPages || 1,
           count: paginationData.count || 0,
           totalRecords: paginationData.totalRecords || 0,
-          hasNext: paginationData.hasNext || false,
-          hasPrev: paginationData.hasPrev || false,
-          pageSize: paginationData.pageSize || 20
+          hasNext: currentPage < totalPages,
+          hasPrev: currentPage > 1,
+          pageSize: pageSize
         };
         console.log('📊 Updated Pagination:', updatedPagination);
         setPagination(updatedPagination);
-        setCurrentPage(paginationData.current || 1);
+        setCurrentPage(currentPage);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [dispatch, qrId]);
 
   // Load transaction data on component mount and when qrId changes
   useEffect(() => {
     fetchTransactionsData(1, 20); // Reset to page 1 when qrId changes
-  }, [dispatch, qrId]);
+  }, [fetchTransactionsData]);
 
   // Page change handler
   const handlePageChange = (page: number) => {
@@ -111,7 +111,7 @@ const TransactionsPage = () => {
     }, 30000); // Every 30 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [currentPage, pagination.pageSize, dispatch]);
+  }, [currentPage, pagination.pageSize, fetchTransactionsData]);
 
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString('en-IN', { 

@@ -4,7 +4,7 @@
  */
 
 import { useAppSelector } from './hooks';
-import type { QRCode, Transaction } from '../types';
+import type { QRCode, Transaction } from '../types/index';
 
 /**
  * Safe hook to get QR codes - always returns an array
@@ -12,7 +12,7 @@ import type { QRCode, Transaction } from '../types';
 export const useSafeQRCodes = (): QRCode[] => {
   return useAppSelector((state) => {
     const qrCodes = state.qrCodes?.qrCodes;
-    const result = Array.isArray(qrCodes) ? qrCodes : [];
+    const result: QRCode[] = Array.isArray(qrCodes) ? qrCodes : [];
     console.log('📱 useSafeQRCodes: Returning', result.length, 'QR codes');
     result.forEach((qr, index) => {
       console.log(`Hook QR ${index + 1}:`, {
@@ -32,7 +32,8 @@ export const useSafeQRCodes = (): QRCode[] => {
 export const useSafeTransactions = (): Transaction[] => {
   return useAppSelector((state) => {
     const transactions = state.transactions?.transactions;
-    return Array.isArray(transactions) ? transactions : [];
+    const result: Transaction[] = Array.isArray(transactions) ? transactions : [];
+    return result;
   });
 };
 
@@ -40,28 +41,40 @@ export const useSafeTransactions = (): Transaction[] => {
  * Safe hook to get QR codes loading state
  */
 export const useQRCodesLoading = (): boolean => {
-  return useAppSelector((state) => state.qrCodes?.loading || false);
+  return useAppSelector((state) => {
+    const loading = state.qrCodes?.loading;
+    return typeof loading === 'boolean' ? loading : false;
+  });
 };
 
 /**
  * Safe hook to get transactions loading state
  */
 export const useTransactionsLoading = (): boolean => {
-  return useAppSelector((state) => state.transactions?.loading || false);
+  return useAppSelector((state) => {
+    const loading = state.transactions?.loading;
+    return typeof loading === 'boolean' ? loading : false;
+  });
 };
 
 /**
  * Safe hook to get QR codes error state
  */
 export const useQRCodesError = (): string | null => {
-  return useAppSelector((state) => state.qrCodes?.error || null);
+  return useAppSelector((state) => {
+    const error = state.qrCodes?.error;
+    return typeof error === 'string' ? error : null;
+  });
 };
 
 /**
  * Safe hook to get transactions error state
  */
 export const useTransactionsError = (): string | null => {
-  return useAppSelector((state) => state.transactions?.error || null);
+  return useAppSelector((state) => {
+    const error = state.transactions?.error;
+    return typeof error === 'string' ? error : null;
+  });
 };
 
 /**

@@ -1,22 +1,32 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { simulatePayment } from '../utils/paymentSimulator';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../store/hooks';
-import { useSafeQRCodes, useSafeTransactions, useFilteredQRCodes } from '../store/safeHooks';
-import { replaceQRCodes, toggleQRStatus, toggleSimulation } from '../store/slices/qrCodesSlice';
+import { useSafeQRCodes, useFilteredQRCodes } from '../store/safeHooks';
+import { replaceQRCodes } from '../store/slices/qrCodesSlice';
 import { qrApi, simulationApi, transactionApi } from '../services/api';
 import QRCode from 'react-qr-code';
 import QRGenerationModal from '../components/QRGenerationModal';
 import Modal from '../components/Modal';
 import QRCodeCard from '../components/QRCodeCard';
 import Header from '../components/Header';
-import type { QRCode as QRCodeType, Transaction } from '../types';
+import type { QRCode as QRCodeInterface } from '../types/index';
+
+// Type for QR form data
+type QRFormData = {
+  qrId: string;
+  vpa: string;
+  referenceName: string;
+  description?: string;
+  maxAmount?: number;
+  category: 'Retail' | 'Rental' | 'Education' | 'Custom';
+  notes?: string;
+  updatedAt?: string;
+};
 
 const GeneratedQRPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const qrCodes = useSafeQRCodes();
-  const transactions = useSafeTransactions();
 
   const [filterId, setFilterId] = useState('');
   const [filterName, setFilterName] = useState('');
@@ -25,16 +35,14 @@ const GeneratedQRPage: React.FC = () => {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editIdx, setEditIdx] = useState<number | null>(null);
-  const [editInitialData, setEditInitialData] = useState<any>({});
+  const [editInitialData, setEditInitialData] = useState<Partial<QRCodeInterface>>({});
   const [showCardIdx, setShowCardIdx] = useState<number | null>(null);
   const [toggleLoading, setToggleLoading] = useState<string | null>(null); // Track which QR is being toggled
   const [statusToggleLoading, setStatusToggleLoading] = useState<string | null>(null); // Track which QR status is being toggled
-  const [loading, setLoading] = useState(false);
 
   // Function to refresh QR data from backend
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     try {
-      setLoading(true);
       console.log('🔍 Fetching QR codes from API...');
       const response = await qrApi.getAll({ limit: 1000 }); // Get all QR codes
       console.log('📡 Raw API Response:', response);
@@ -50,7 +58,7 @@ const GeneratedQRPage: React.FC = () => {
       }
       
       // Extract QR codes from the nested response structure
-      let qrCodesData;
+      let qrCodesData: QRCodeInterface[];
       if (response.data && response.data.qrCodes && Array.isArray(response.data.qrCodes)) {
         qrCodesData = response.data.qrCodes;
       } else if (Array.isArray(response.data)) {
@@ -85,16 +93,14 @@ const GeneratedQRPage: React.FC = () => {
       console.log('✅ QR data refreshed successfully');
     } catch (error) {
       console.error('❌ Failed to refresh QR data:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [dispatch]);
 
   // State to store transaction counts per QR code
   const [qrTransactionCounts, setQrTransactionCounts] = useState<Record<string, number>>({});
 
   // Function to fetch transaction counts for all QR codes
-  const refreshTransactionCounts = async () => {
+  const refreshTransactionCounts = useCallback(async () => {
     try {
       console.log('🔍 Fetching transaction counts from API...');
       const counts: Record<string, number> = {};
@@ -117,19 +123,19 @@ const GeneratedQRPage: React.FC = () => {
     } catch (error) {
       console.error('❌ Failed to refresh transaction counts:', error);
     }
-  };
+  }, [qrCodes]);
 
   // Load QR data and transaction counts on component mount
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [refreshData]);
 
   // Load transaction counts when QR codes change
   useEffect(() => {
     if (qrCodes.length > 0) {
       refreshTransactionCounts();
     }
-  }, [qrCodes]);
+  }, [qrCodes, refreshTransactionCounts]);
 
   // Frontend simulation disabled - transactions should come from backend simulation service
   // React.useEffect(() => {
@@ -158,12 +164,17 @@ const GeneratedQRPage: React.FC = () => {
     status: filterStatus
   });
 
-  const handleCreateQR = async (data: { qrId: string; vpa: string; referenceName: string; description?: string; maxAmount?: string; category?: string; notes?: string }) => {
+  const handleCreateQR = async (data: QRFormData) => {
     try {
         console.log('Creating QR code with data:', data);
         const payload = {
-            ...data,
-            category: data.category || 'Other', // Ensure category is always a string
+            vpa: data.vpa,
+            referenceName: data.referenceName,
+            description: data.description || '',
+            maxAmount: data.maxAmount || 0,
+            category: data.category,
+            notes: data.notes || '',
+            updatedAt: data.updatedAt || new Date().toISOString()
         };
 
         const response = await qrApi.create(payload);
@@ -194,15 +205,15 @@ const GeneratedQRPage: React.FC = () => {
     }
   };
 
-  const handleEditQR = async (data: { referenceName: string; description?: string; maxAmount?: string; category?: string; notes?: string }) => {
+  const handleEditQR = async (data: QRFormData) => {
     if (editIdx !== null) {
       try {
         const qrId = qrCodes[editIdx].qrId;
         await qrApi.update(qrId, {
           referenceName: data.referenceName,
           description: data.description || '',
-          maxAmount: data.maxAmount || '0',
-          category: data.category || 'Other',
+          maxAmount: data.maxAmount || 0,
+          category: data.category,
           notes: data.notes || ''
         });
         setEditIdx(null);
@@ -716,7 +727,11 @@ const GeneratedQRPage: React.FC = () => {
                             }}
                             onClick={() => {
                               setEditIdx(origIdx);
-                              setEditInitialData(qrCodes[origIdx]);
+                              const qr = qrCodes[origIdx];
+                              setEditInitialData({
+                                ...qr,
+                                maxAmount: qr.maxAmount ? Number(qr.maxAmount) : undefined
+                              });
                             }}
                           >
                             Edit
@@ -812,7 +827,7 @@ const GeneratedQRPage: React.FC = () => {
             qrId: qrCodes[showCardIdx].qrId,
             vpa: qrCodes[showCardIdx].vpa,
             referenceName: qrCodes[showCardIdx].referenceName,
-            maxAmount: qrCodes[showCardIdx].maxAmount || '',
+            maxAmount: qrCodes[showCardIdx].maxAmount?.toString() || '',
             category: qrCodes[showCardIdx].category,
             status: qrCodes[showCardIdx].status,
           }} />

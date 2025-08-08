@@ -30,34 +30,71 @@ const initialState: TransactionsState = {
   error: null,
 };
 
+// Helper function to convert date to string
+const dateToString = (date: Date | string | undefined): string | undefined => {
+  if (!date) return undefined;
+  if (typeof date === 'string') return date;
+  return (date as Date).toISOString();
+};
+
+// Helper function to normalize transaction timestamps
+const normalizeTransaction = (transaction: Record<string, unknown>): Transaction => ({
+  paymentId: (transaction.paymentId as string) || '',
+  qrId: (transaction.qrId as string) || '',
+  amount: (transaction.amount as number) || 0,
+  status: (transaction.status as Transaction['status']) || 'Pending',
+  utr: (transaction.utr as string) || '',
+  timestamp: dateToString(transaction.timestamp as Date | string) || new Date().toISOString(),
+  createdAt: dateToString(transaction.createdAt as Date | string),
+  updatedAt: dateToString(transaction.updatedAt as Date | string),
+  customerInfo: (transaction.customerInfo as Transaction['customerInfo']) || { name: '', phone: '', upiApp: '' },
+});
+
+// Helper function to normalize transaction arrays
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const normalizeTransactions = (transactions: any[]): Transaction[] => 
+  transactions.map(normalizeTransaction);
+
 // Thunks for async operations
-export const fetchTransactions = createAsyncThunk('transactions/fetchTransactions', async (params?: { qrId?: string; status?: string; limit?: number; page?: number }, { rejectWithValue }) => {
-  try {
-    const response = await transactionApi.getAll(params);
-    // Return the full response including pagination info
-    return response;
-  } catch (error) {
-    return rejectWithValue(error.message);
+export const fetchTransactions = createAsyncThunk(
+  'transactions/fetchTransactions', 
+  async (params: { qrId?: string; status?: string; limit?: number; page?: number } = {}, { rejectWithValue }) => {
+    try {
+      const response = await transactionApi.getAll(params);
+      // Return the full response including pagination info
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      return rejectWithValue(errorMessage);
+    }
   }
-});
+);
 
-export const fetchTransactionStats = createAsyncThunk('transactions/fetchStats', async (params?: { startDate?: string; endDate?: string; qrId?: string }, { rejectWithValue }) => {
-  try {
-    const response = await transactionApi.getStats(params);
-    return response.data.summary;
-  } catch (error) {
-    return rejectWithValue(error.message);
+export const fetchTransactionStats = createAsyncThunk(
+  'transactions/fetchStats', 
+  async (params: { startDate?: string; endDate?: string; qrId?: string } = {}, { rejectWithValue }) => {
+    try {
+      const response = await transactionApi.getStats(params);
+      return response.data.summary;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      return rejectWithValue(errorMessage);
+    }
   }
-});
+);
 
-export const simulateTransactions = createAsyncThunk('transactions/simulate', async ({ qrId, count }: { qrId: string; count?: number }, { rejectWithValue }) => {
-  try {
-    const response = await transactionApi.simulate(qrId, count);
-    return response.data;
-  } catch (error) {
-    return rejectWithValue(error.message);
+export const simulateTransactions = createAsyncThunk(
+  'transactions/simulate', 
+  async ({ qrId, count }: { qrId: string; count?: number }, { rejectWithValue }) => {
+    try {
+      const response = await transactionApi.simulate(qrId, count);
+      return response.data;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      return rejectWithValue(errorMessage);
+    }
   }
-});
+);
 
 const transactionsSlice = createSlice({
   name: 'transactions',
@@ -133,7 +170,7 @@ const transactionsSlice = createSlice({
       state.loading = false;
       // Extract transactions from the response
       const transactions = action.payload?.data?.transactions || [];
-      state.transactions = Array.isArray(transactions) ? transactions : [];
+      state.transactions = Array.isArray(transactions) ? normalizeTransactions(transactions) : [];
     });
     builder.addCase(fetchTransactions.rejected, (state, action) => {
       state.loading = false;
@@ -147,7 +184,8 @@ const transactionsSlice = createSlice({
     });
     builder.addCase(simulateTransactions.fulfilled, (state, action) => {
       state.loading = false;
-      state.transactions.unshift(...action.payload);
+      const normalizedTransactions = normalizeTransactions(action.payload || []);
+      state.transactions.unshift(...normalizedTransactions);
     });
     builder.addCase(simulateTransactions.rejected, (state, action) => {
       state.loading = false;

@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
+import type { Middleware } from '@reduxjs/toolkit';
 import qrCodesReducer from './slices/qrCodesSlice';
 import transactionsReducer from './slices/transactionsSlice';
 
 // Create a middleware to ensure arrays are always properly initialized
-const ensureArraysMiddleware = (store) => (next) => (action) => {
+const ensureArraysMiddleware: Middleware = (store) => (next) => (action) => {
   const result = next(action);
   const state = store.getState();
   

@@ -18,13 +18,13 @@ function DashboardWithRedux() {
     console.log('🏠 Dashboard mounted - Loading dashboard data...');
     // Initial data load
     dispatch(fetchQRCodes());
-    dispatch(fetchTransactionStats()); // Only fetch stats for dashboard performance
+    dispatch(fetchTransactionStats({})); // Only fetch stats for dashboard performance
 
     // Set up auto-refresh interval (1 minute = 60000ms)
     const refreshInterval = setInterval(() => {
       console.log('🔄 Auto-refreshing dashboard data from backend...');
       dispatch(fetchQRCodes());
-      dispatch(fetchTransactionStats()); // Only refresh stats for dashboard
+      dispatch(fetchTransactionStats({})); // Only refresh stats for dashboard
     }, 60000); // 1 minute
 
     // Cleanup: Stop auto-refresh when leaving dashboard
