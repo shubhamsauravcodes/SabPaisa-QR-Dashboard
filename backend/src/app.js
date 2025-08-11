@@ -9,16 +9,28 @@ require('dotenv').config();
 const connectDB = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
 const routes = require('./routes');
-const simulationService = require('./services/simulationService');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB and initialize simulation service
-connectDB().then(() => {
-  // Initialize simulation service after database connection
-  simulationService.initialize();
-});
+// Global connection promise to avoid multiple connections
+let isConnected = false;
+
+// Connect to MongoDB function for serverless
+async function connectToDatabase() {
+  if (isConnected) {
+    return;
+  }
+  
+  try {
+    await connectDB();
+    isConnected = true;
+    console.log('✅ MongoDB connected in serverless environment');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+    throw error;
+  }
+}
 
 // Security middleware
 app.use(helmet({
@@ -96,6 +108,20 @@ app.use(express.urlencoded({ extended: true }));
 // Compression
 app.use(compression());
 
+// Database connection middleware for serverless
+app.use(async (req, res, next) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Database connection failed'
+    });
+  }
+});
+
 // Logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -113,6 +139,23 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'SabPaisa QR Dashboard API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      api: '/api/',
+      qr: '/api/qr',
+      transactions: '/api/transactions',
+      simulation: '/api/simulation'
+    }
+  });
+});
+
 // API routes
 app.use('/api', routes);
 
@@ -127,25 +170,14 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📖 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n🛑 Received SIGINT. Graceful shutdown...');
-  simulationService.stopAllSimulations();
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Received SIGTERM. Graceful shutdown...');
-  simulationService.stopAllSimulations();
-  process.exit(0);
-});
+// For local development only
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📖 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}
 
 module.exports = app;
