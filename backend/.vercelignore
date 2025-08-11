@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Development files
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# Testing
+tests/
+*.test.js
+coverage/
+
+# Development tools
+.eslintrc*
+.prettierrc*
+nodemon.json
+
+# Documentation
+README.md
+docs/
+
+# Scripts (optional, can include if needed)
+scripts/
+
+# Git
+.git/
+.gitignore

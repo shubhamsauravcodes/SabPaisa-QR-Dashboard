@@ -37,14 +37,30 @@ app.use(cors({
       'http://127.0.0.1:5173',
       'http://localhost:3000',
       'http://127.0.0.1:3000',
-      process.env.FRONTEND_URL
+      process.env.FRONTEND_URL,
+      // Vercel patterns
+      /\.vercel\.app$/,
+      /\.netlify\.app$/,
+      // Add your custom domain here
+      'https://your-frontend-domain.com'
     ].filter(Boolean);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      }
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
       console.log(`🚨 CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all origins for development
+      callback(null, true); // Allow all origins for now - change to false in production
     }
   },
   credentials: true,

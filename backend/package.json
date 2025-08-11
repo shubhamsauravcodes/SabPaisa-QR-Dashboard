@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "build": "echo \"No build process required for Node.js\"",
+    "build": "echo \"Build completed successfully\"",
+    "vercel-build": "echo \"Vercel build completed\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
